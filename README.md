@@ -1,6 +1,7 @@
-# High School Assist
+# Mathwise
 
-Small, server-free web tools for a high-school math classroom. Everything runs in the
+Small, server-free math tools for the high-school classroom: a teacher side for building
+worksheets and quizzes, and (coming later) a student side with practice apps. Everything runs in the
 browser and works on GitHub Pages; your files stay on your computer.
 
 ## Worksheet & quiz editor
@@ -27,7 +28,7 @@ recreated from real Math 9 handouts, are in [`examples/`](examples/) and in the 
 ## Running it
 
 * **Online:** enable GitHub Pages for this repository (Settings → Pages → Deploy from the
-  `main` branch, `/ (root)`), then open `https://<user>.github.io/highschool-assist/`.
+  `main` branch, `/ (root)`), then open `https://<user>.github.io/mathwise/`.
 * **Locally:** run `python3 -m http.server` in this folder and open
   <http://localhost:8000/>. Opening `worksheets/index.html` straight from disk also works,
   except for the *Examples…* menu.
@@ -36,4 +37,4 @@ Checks for the example files: `node tests/check-examples.js`.
 
 ## Coming later
 
-Problem generators for worksheets, lesson and unit plans, and student progress (CSV).
+Problem generators for worksheets and quizzes, and student practice apps built on them.

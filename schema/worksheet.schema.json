@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://faamorim.github.io/highschool-assist/schema/worksheet.schema.json",
+  "$id": "https://faamorim.github.io/mathwise/schema/worksheet.schema.json",
   "title": "Worksheet / quiz",
   "description": "One file describes a printable worksheet or quiz. Every text field uses the markup described in docs/worksheet-format.md (bold, lists, $math$, [[box]] / [[line]] blanks).",
   "type": "object",
