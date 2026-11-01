@@ -58,6 +58,11 @@ main { flex: 1 1 auto; display: flex; min-height: 0; }
 #preview-pane .pages { margin: 0 auto; width: max-content; }
 #preview-pane .page { margin: 0 auto 20px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18); }
 #preview-pane .page.overfull { outline: 3px solid #e0a100; }
+#preview-pane .key-divider {
+  max-width: 8.5in; margin: 10px auto 14px; padding: 8px 12px; border-radius: 6px;
+  background: #fff4d6; border: 1px solid #e8c766; color: #6b5200; font-size: 13px; text-align: center;
+}
+#preview-pane .page.key-page { box-shadow: 0 0 0 3px #e8c766, 0 2px 10px rgba(0, 0, 0, 0.18); }
 #preview-pane .frag[data-block] { cursor: pointer; }
 #preview-pane .frag[data-block]:hover { outline: 1px dashed #7aa2e3; outline-offset: 2px; }
 #preview-pane .frag.flash { animation: flash 1s ease-out; }
@@ -186,11 +191,14 @@ input.mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 1
 /* ---------- print ---------- */
 @media print {
   body { background: #fff; display: block; height: auto; }
-  .toolbar, #editor-pane, .drop-hint { display: none !important; }
+  .toolbar, #editor-pane, .drop-hint, .key-divider { display: none !important; }
+  body[data-print="student"] .page.key-page { display: none !important; }
+  body[data-print="key"] .page:not(.key-page) { display: none !important; }
+  #preview-pane .page.key-page { box-shadow: none; }
   main { display: block; }
   #preview-pane { padding: 0; overflow: visible; }
   #preview-pane .pages { zoom: 1 !important; width: auto; }
-  #preview-pane .page { margin: 0; box-shadow: none; outline: none !important; break-after: page; }
-  #preview-pane .page:last-child { break-after: auto; }
+  #preview-pane .page { margin: 0; box-shadow: none; outline: none !important; }
+  #preview-pane .page ~ .page { break-before: page; }
   #preview-pane .frag:hover { outline: none; }
 }

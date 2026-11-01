@@ -43,7 +43,10 @@
     },
     "defaultMarks": { "type": "number", "minimum": 0, "default": 1, "description": "Marks for a question or part that does not set its own." },
     "showMarks": { "type": "boolean", "default": false, "description": "Print \"[2 marks]\" next to each question." },
-    "answerKey": { "type": "boolean", "default": false, "description": "Add an answer page at the end." },
+    "answerKey": {
+      "enum": ["none", "separate", "included"],
+      "description": "Answer key built from the stored answers. separate (default for quizzes): its own pages after the handout, not counted in the page numbers and printed separately from the student copy. included: part of the handout, e.g. a practice copy. none (default for worksheets). Older files may use true (= separate) or false (= none)."
+    },
     "paper": { "enum": ["letter", "a4"], "default": "letter" },
     "blocks": { "type": "array", "items": { "$ref": "#/$defs/block" } }
   },

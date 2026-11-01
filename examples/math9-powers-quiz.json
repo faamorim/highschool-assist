@@ -15,7 +15,7 @@
     "pageNumbers": true
   },
   "defaultMarks": 0.5,
-  "answerKey": true,
+  "answerKey": "separate",
   "paper": "letter",
   "blocks": [
     {

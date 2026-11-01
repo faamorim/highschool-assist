@@ -7,6 +7,7 @@
 
   var SCHEMA_VERSION = 1;
   var STANDARD_FIELDS = ['name', 'date', 'period', 'block'];
+  var ANSWER_KEY_MODES = ['none', 'separate', 'included'];
   var BLOCK_KINDS = ['heading', 'text', 'example', 'question', 'table', 'image', 'pageBreak'];
 
   function letter(i) {
@@ -80,7 +81,12 @@
     var f = doc.footer = doc.footer || {};
     if (typeof f.pageNumbers !== 'boolean') f.pageNumbers = true;
     if (!isNum(doc.defaultMarks)) doc.defaultMarks = 1;
-    if (typeof doc.answerKey !== 'boolean') doc.answerKey = false;
+    // Answer key: 'none', 'separate' (own pages, not counted, printed apart
+    // from the student copy) or 'included' (part of the handout). Older files
+    // used true/false.
+    if (doc.answerKey === true) doc.answerKey = 'separate';
+    else if (doc.answerKey === false) doc.answerKey = 'none';
+    if (ANSWER_KEY_MODES.indexOf(doc.answerKey) < 0) doc.answerKey = doc.type === 'quiz' ? 'separate' : 'none';
     if (doc.paper !== 'a4') doc.paper = 'letter';
     if (!Array.isArray(doc.blocks)) doc.blocks = [];
     doc.blocks = doc.blocks.filter(function (b) {
@@ -225,6 +231,7 @@
     SCHEMA_VERSION: SCHEMA_VERSION,
     STANDARD_FIELDS: STANDARD_FIELDS,
     BLOCK_KINDS: BLOCK_KINDS,
+    ANSWER_KEY_MODES: ANSWER_KEY_MODES,
     newDoc: newDoc,
     newBlock: newBlock,
     normalize: normalize,

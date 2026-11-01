@@ -20,6 +20,9 @@ const load = (f) => WS.model.normalize(JSON.parse(fs.readFileSync(path.join(root
 const quiz = load('math9-powers-quiz.json');
 assert.strictEqual(WS.model.totalMarks(quiz), 28, 'quiz total');
 assert.strictEqual(WS.model.labels(quiz).filter(Boolean).length, 14, 'quiz has 14 questions');
+assert.strictEqual(quiz.answerKey, 'separate', 'quiz key is separate by default');
+assert.strictEqual(WS.model.normalize({ type: 'quiz', title: '', blocks: [] }).answerKey, 'separate');
+assert.strictEqual(WS.model.normalize({ type: 'worksheet', title: '', blocks: [], answerKey: true }).answerKey, 'separate');
 const key = WS.model.answerKey(quiz);
 assert.strictEqual(key.length, 14, 'every quiz question has answers');
 

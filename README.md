@@ -13,8 +13,10 @@ browser and works on GitHub Pages; your files stay on your computer.
   fields) and the body: headings, rich text, worked examples, questions with parts in 1–4
   columns, tables with blank cells, images and page breaks.
 * **Math** is written in LaTeX between `$…$` and previewed live (KaTeX, bundled in `vendor/`).
-* **Print / PDF** gives the title on every page, `1 out of N` page numbers, optional answer
-  key page, and a teacher copy with answers in red (*Show answers*).
+* **Print / PDF** gives the title on every page and `1 out of N` page numbers. The answer key is
+  kept apart by default: its pages are not counted and not printed with the student copy
+  (*Print key* prints them on their own). It can also be included for practice copies, and
+  *Show answers* gives a teacher copy with answers in red.
 * The **JSON** tab shows the raw file, for quick bulk edits or pasting generated content.
 
 The file format is documented in [`docs/worksheet-format.md`](docs/worksheet-format.md) and

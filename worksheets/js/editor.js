@@ -172,6 +172,7 @@
       target.id = 'pages';
       old.replaceWith(target);
       pane.scrollTop = scroll;
+      updatePrintButtons();
       document.title = (state.doc.title ? stripMarkup(state.doc.title) + ' – ' : '') + 'Worksheet & Quiz Editor';
     });
   }
@@ -241,8 +242,11 @@
       h('div', { class: 'row' },
         checkbox('Page numbers ("1 out of 3")', function () { return doc.footer.pageNumbers; },
           function (v) { doc.footer.pageNumbers = v; }),
-        checkbox('Answer key page at the end', function () { return doc.answerKey; },
-          function (v) { doc.answerKey = v; }))
+        field('Answer key', selectInput(doc, 'answerKey', [
+          ['none', 'None'],
+          ['separate', 'Separate pages (not counted, printed apart)'],
+          ['included', 'Included in the handout (practice copy)']
+        ])))
     ));
 
     root.appendChild(h('fieldset', null,
@@ -918,9 +922,20 @@
     });
   }
 
-  function print() {
+  // what: 'student' (everything except a separate answer key) or 'key'
+  // (only the separate answer key pages).
+  function print(what) {
+    if (what === 'key' && state.doc.answerKey !== 'separate') return;
     renderToken++;
-    renderPreview().then(function () { window.print(); });
+    renderPreview().then(function () {
+      document.body.dataset.print = what === 'key' ? 'key' : 'student';
+      window.print();
+    });
+  }
+  window.addEventListener('afterprint', function () { delete document.body.dataset.print; });
+
+  function updatePrintButtons() {
+    $('btn-print-key').hidden = !state.doc || state.doc.answerKey !== 'separate';
   }
 
   // ---------- wiring ----------
@@ -944,7 +959,8 @@
     $('btn-save').addEventListener('click', function () { save(false); });
     $('btn-saveas').addEventListener('click', function () { save(true); });
     $('btn-undo').addEventListener('click', undo);
-    $('btn-print').addEventListener('click', print);
+    $('btn-print').addEventListener('click', function () { print('student'); });
+    $('btn-print-key').addEventListener('click', function () { print('key'); });
     $('chk-answers').addEventListener('change', function () {
       state.showAnswers = $('chk-answers').checked;
       schedulePreview(true);
@@ -971,7 +987,7 @@
       var k = ev.key.toLowerCase();
       if (k === 's') { ev.preventDefault(); save(ev.shiftKey); }
       else if (k === 'o') { ev.preventDefault(); openFile(); }
-      else if (k === 'p') { ev.preventDefault(); print(); }
+      else if (k === 'p') { ev.preventDefault(); print('student'); }
       else if (k === 'z' && !ev.shiftKey && !/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) {
         ev.preventDefault(); undo();
       }

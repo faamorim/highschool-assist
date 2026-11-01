@@ -18,7 +18,7 @@ this page explains it with examples. Full examples live in [`examples/`](../exam
   },
   "footer": { "pageNumbers": true },
   "defaultMarks": 0.5,
-  "answerKey": true,
+  "answerKey": "separate",
   "paper": "letter",
   "blocks": [
     { "kind": "text", "content": "Each question is 0.5 mark. Good luck ☺" },
@@ -46,7 +46,7 @@ this page explains it with examples. Full examples live in [`examples/`](../exam
 | `footer.pageNumbers` | `1 out of 3` at the bottom of each page. |
 | `defaultMarks` | Marks for any question / part that doesn't set its own. |
 | `showMarks` | Print `[2 marks]` next to each question. |
-| `answerKey` | Add an "Answers" page at the end, built from the stored answers. |
+| `answerKey` | `"separate"`: an answer key on its own pages, **not** counted in "1 out of N" and left out of the student printout (print it with *Print key*). Default for quizzes. `"included"`: answers page is part of the handout (practice copies). `"none"`: no key (default for worksheets). |
 | `paper` | `"letter"` or `"a4"`. |
 
 ## Blocks

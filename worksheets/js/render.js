@@ -227,10 +227,13 @@
       out = out.concat(fr);
     });
 
-    if (doc.answerKey) {
+    if (doc.answerKey !== 'none') {
       var key = WS.model.answerKey(doc);
-      out.push({ pageBreak: true });
-      out.push(frag(el('div', 'ws-heading size-m', 'Answers'), null, true));
+      var separate = doc.answerKey === 'separate';
+      // A separate key starts its own set of pages that are not counted in
+      // "1 out of N" and are left out of the student printout.
+      out.push(separate ? { keyBreak: true } : { pageBreak: true });
+      out.push(frag(el('div', 'ws-heading size-m', separate ? 'Answer key' : 'Answers'), null, true));
       key.forEach(function (q) {
         var lab = q.label.replace(/\)$/, '');
         if (/^\d+$/.test(lab)) lab = '#' + lab;
@@ -257,10 +260,11 @@
     var pages = [];
     var body = null;
 
+    var inKey = false;
     function newPage() {
       var first = pages.length === 0;
-      var page = el('div', 'page paper-' + doc.paper);
-      page.appendChild(headerEl(doc, first || doc.header.repeat));
+      var page = el('div', 'page paper-' + doc.paper + (inKey ? ' key-page' : ''));
+      page.appendChild(headerEl(doc, !inKey && (first || doc.header.repeat)));
       body = el('div', 'page-body');
       page.appendChild(body);
       page.appendChild(el('div', 'page-footer'));
@@ -275,6 +279,13 @@
         if (body.children.length) newPage();
         return;
       }
+      if (f.keyBreak) {
+        inKey = true;
+        container.appendChild(el('div', 'key-divider',
+          'Answer key: not counted in the page numbers and not printed with the student copy (use “Print key”).'));
+        newPage();
+        return;
+      }
       body.appendChild(f);
       if (!overflows(body, f)) return;
       // Move this fragment plus any "keep with next" fragments right before
@@ -287,11 +298,17 @@
       chain.forEach(function (c) { nb.appendChild(c); });
     });
 
+    var main = pages.filter(function (p) { return !p.classList.contains('key-page'); });
+    var keyPages = pages.filter(function (p) { return p.classList.contains('key-page'); });
     if (doc.footer.pageNumbers) {
-      pages.forEach(function (p, i) {
-        p.querySelector('.page-footer').textContent = (i + 1) + ' out of ' + pages.length;
+      main.forEach(function (p, i) {
+        p.querySelector('.page-footer').textContent = (i + 1) + ' out of ' + main.length;
       });
     }
+    keyPages.forEach(function (p, i) {
+      p.querySelector('.page-footer').textContent = 'Answer key' +
+        (keyPages.length > 1 ? ' · ' + (i + 1) + ' of ' + keyPages.length : '');
+    });
     pages.forEach(function (p) {
       var b = p.querySelector('.page-body');
       if (b.scrollHeight > b.clientHeight + 1) p.classList.add('overfull');
@@ -315,7 +332,7 @@
     var frags = buildFragments(doc, opts || {});
     // Images need their size before we can measure; stage them off-screen.
     var staging = el('div', 'staging');
-    frags.forEach(function (f) { if (!f.pageBreak) staging.appendChild(f); });
+    frags.forEach(function (f) { if (f.nodeType) staging.appendChild(f); });
     document.body.appendChild(staging);
     return waitForImages(frags).then(function () {
       staging.remove();
