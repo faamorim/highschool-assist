@@ -25,6 +25,10 @@
     </select>
     <button id="btn-undo" title="Undo the last add / move / delete (Ctrl+Z outside a text box)" disabled>Undo</button>
     <span class="spacer"></span>
+    <select id="sel-view" title="Which document to preview">
+      <option value="handout">Handout</option>
+      <option value="key">Teacher key</option>
+    </select>
     <label title="Teacher copy: show stored answers in red"><input type="checkbox" id="chk-answers"> Show answers</label>
     <select id="sel-zoom" title="Preview zoom">
       <option value="0.6">60%</option>
@@ -33,8 +37,8 @@
       <option value="1" selected>100%</option>
       <option value="1.25">125%</option>
     </select>
-    <button id="btn-print" class="primary" title="Print or save as PDF (Ctrl+P). A separate answer key is left out.">Print / PDF</button>
-    <button id="btn-print-key" title="Print or save only the separate answer key" hidden>Print key</button>
+    <button id="btn-print" class="primary" title="Print or save the handout as PDF">Print handout</button>
+    <button id="btn-print-key" class="primary" title="Print or save the separate teacher key as PDF" hidden>Print key</button>
     <span id="status" class="status"></span>
   </header>
 

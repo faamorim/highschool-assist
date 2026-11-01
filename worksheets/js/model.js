@@ -7,7 +7,8 @@
 
   var SCHEMA_VERSION = 1;
   var STANDARD_FIELDS = ['name', 'date', 'period', 'block'];
-  var ANSWER_KEY_MODES = ['none', 'separate', 'included'];
+  var HANDOUT_ANSWERS = ['none', 'final'];
+  var KEY_MODES = ['none', 'final', 'worked'];
   var BLOCK_KINDS = ['heading', 'text', 'example', 'question', 'table', 'image', 'pageBreak'];
 
   function letter(i) {
@@ -81,12 +82,18 @@
     var f = doc.footer = doc.footer || {};
     if (typeof f.pageNumbers !== 'boolean') f.pageNumbers = true;
     if (!isNum(doc.defaultMarks)) doc.defaultMarks = 1;
-    // Answer key: 'none', 'separate' (own pages, not counted, printed apart
-    // from the student copy) or 'included' (part of the handout). Older files
-    // used true/false.
-    if (doc.answerKey === true) doc.answerKey = 'separate';
-    else if (doc.answerKey === false) doc.answerKey = 'none';
-    if (ANSWER_KEY_MODES.indexOf(doc.answerKey) < 0) doc.answerKey = doc.type === 'quiz' ? 'separate' : 'none';
+    // answers.handout: 'none' | 'final'  (an answers page inside the handout)
+    // answers.key:     'none' | 'final' | 'worked'  (separate teacher key)
+    var a = doc.answers && typeof doc.answers === 'object' ? doc.answers : {};
+    if (!a.handout && !a.key && doc.answerKey != null) {
+      // Older drafts used a single answerKey setting.
+      if (doc.answerKey === 'included') a.handout = 'final';
+      if (doc.answerKey === true || doc.answerKey === 'separate') a.key = 'final';
+    }
+    delete doc.answerKey;
+    if (HANDOUT_ANSWERS.indexOf(a.handout) < 0) a.handout = 'none';
+    if (KEY_MODES.indexOf(a.key) < 0) a.key = doc.type === 'quiz' ? 'final' : 'none';
+    doc.answers = a;
     if (doc.paper !== 'a4') doc.paper = 'letter';
     if (!Array.isArray(doc.blocks)) doc.blocks = [];
     doc.blocks = doc.blocks.filter(function (b) {
@@ -202,11 +209,12 @@
       if (b.kind !== 'question') return;
       var items = [];
       var own = answerOf(b);
-      if (own) items.push({ label: '', answer: own });
+      var sol = function (x) { return x.solution && String(x.solution).trim() ? String(x.solution) : ''; };
+      if (own || sol(b)) items.push({ label: '', answer: own, solution: sol(b), prompt: '' });
       if (hasParts(b)) {
         b.parts.forEach(function (p, pi) {
           var a = answerOf(p);
-          if (a) items.push({ label: partLabel(pi, p), answer: a });
+          if (a || sol(p)) items.push({ label: partLabel(pi, p), answer: a, solution: sol(p), prompt: p.prompt });
         });
       }
       if (b.table) {
@@ -222,7 +230,7 @@
           });
         });
       }
-      if (items.length) out.push({ label: labs[i] || '•', blockIndex: i, items: items });
+      if (items.length) out.push({ label: labs[i] || '•', blockIndex: i, prompt: b.prompt, items: items });
     });
     return out;
   }
@@ -231,7 +239,8 @@
     SCHEMA_VERSION: SCHEMA_VERSION,
     STANDARD_FIELDS: STANDARD_FIELDS,
     BLOCK_KINDS: BLOCK_KINDS,
-    ANSWER_KEY_MODES: ANSWER_KEY_MODES,
+    HANDOUT_ANSWERS: HANDOUT_ANSWERS,
+    KEY_MODES: KEY_MODES,
     newDoc: newDoc,
     newBlock: newBlock,
     normalize: normalize,

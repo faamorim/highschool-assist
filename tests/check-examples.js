@@ -20,11 +20,17 @@ const load = (f) => WS.model.normalize(JSON.parse(fs.readFileSync(path.join(root
 const quiz = load('math9-powers-quiz.json');
 assert.strictEqual(WS.model.totalMarks(quiz), 28, 'quiz total');
 assert.strictEqual(WS.model.labels(quiz).filter(Boolean).length, 14, 'quiz has 14 questions');
-assert.strictEqual(quiz.answerKey, 'separate', 'quiz key is separate by default');
-assert.strictEqual(WS.model.normalize({ type: 'quiz', title: '', blocks: [] }).answerKey, 'separate');
-assert.strictEqual(WS.model.normalize({ type: 'worksheet', title: '', blocks: [], answerKey: true }).answerKey, 'separate');
+// Answer settings: defaults and migration from the older single answerKey setting.
+const norm = (d) => { const a = WS.model.normalize(Object.assign({ title: '', blocks: [] }, d)).answers; return { handout: a.handout, key: a.key }; };
+assert.strictEqual(JSON.stringify(norm({ type: 'quiz' })), '{"handout":"none","key":"final"}');
+assert.strictEqual(JSON.stringify(norm({ type: 'worksheet' })), '{"handout":"none","key":"none"}');
+assert.strictEqual(JSON.stringify(norm({ type: 'worksheet', answerKey: 'included' })), '{"handout":"final","key":"none"}');
+assert.strictEqual(JSON.stringify(norm({ type: 'worksheet', answerKey: true })), '{"handout":"none","key":"final"}');
+assert.strictEqual(quiz.answers.key, 'worked');
 const key = WS.model.answerKey(quiz);
 assert.strictEqual(key.length, 14, 'every quiz question has answers');
+const q11 = key.find((q) => q.label === '11)');
+assert.ok(q11.items.every((it) => it.answer) && q11.items.some((it) => it.solution), 'Q11 has answers and worked steps');
 
 // Worksheet: every homework question has answers, including table blanks and inline blanks.
 const ws = load('math9-scientific-notation-notes.json');

@@ -18,6 +18,8 @@
     fileName: '',
     dirty: false,
     showAnswers: false,
+    view: 'handout',
+    openSteps: new WeakSet(),
     open: new WeakSet(),
     undo: [],
     lastField: null
@@ -165,7 +167,7 @@
     target.style.visibility = 'hidden';
     target.removeAttribute('id');
     pane.appendChild(target);
-    return WS.render.render(target, state.doc, { showAnswers: state.showAnswers }).then(function () {
+    return WS.render.render(target, state.doc, { showAnswers: state.showAnswers, view: state.view }).then(function () {
       if (token !== renderToken) { target.remove(); return; }
       target.style.position = '';
       target.style.visibility = '';
@@ -242,11 +244,15 @@
       h('div', { class: 'row' },
         checkbox('Page numbers ("1 out of 3")', function () { return doc.footer.pageNumbers; },
           function (v) { doc.footer.pageNumbers = v; }),
-        field('Answer key', selectInput(doc, 'answerKey', [
+        field('Answers for students', selectInput(doc.answers, 'handout', [
           ['none', 'None'],
-          ['separate', 'Separate pages (not counted, printed apart)'],
-          ['included', 'Included in the handout (practice copy)']
-        ])))
+          ['final', 'Answers page in the handout']
+        ], { title: 'A final-answers page at the end of the handout, counted in the page numbers' })),
+        field('Teacher key (separate)', selectInput(doc.answers, 'key', [
+          ['none', 'None'],
+          ['final', 'Final answers'],
+          ['worked', 'Worked solutions']
+        ], { title: 'A separate document for the teacher, printed with “Print key”' })))
     ));
 
     root.appendChild(h('fieldset', null,
@@ -433,6 +439,13 @@
       }), 'grow'));
     }
     body.appendChild(row);
+    if (isQ) {
+      body.appendChild(field(parts ? 'Worked solution for the whole question (teacher key, optional)' : 'Worked solution (teacher key, optional)',
+        textInput(q, 'solution', {
+          multiline: true, rows: 2, emptyDeletes: true,
+          placeholder: 'One step per line, e.g.\n$2^x = 2^{-1}$\n$x = -1$'
+        })));
+    }
 
     // Parts
     var partsBox = h('div', { class: 'sub' });
@@ -456,7 +469,7 @@
       var list = h('div', { class: 'parts' });
       list.appendChild(h('div', { class: 'part-row head' },
         h('span'), h('span', { text: 'Part' }), h('span', { text: 'Answer' }),
-        h('span', { text: isQ ? 'Marks' : '' }), h('span', { text: 'Space' }), h('span')));
+        h('span', { text: isQ ? 'Marks' : '' }), h('span', { text: 'Space' }), h('span', { text: isQ ? 'Steps' : '' }), h('span')));
       q.parts.forEach(function (p, pi) {
         list.appendChild(h('div', { class: 'part-row', 'data-part': pi },
           h('span', { class: 'lbl', text: model.partLabel(pi, p) }),
@@ -464,12 +477,27 @@
           textInput(p, 'answer', { placeholder: 'answer', emptyDeletes: true, mono: true }),
           isQ ? numInput(p, 'marks', { min: 0, step: 0.5, placeholder: '' + (q.marks != null ? q.marks : state.doc.defaultMarks) }) : h('span'),
           numInput(p, 'space', { min: 0, step: 0.5, placeholder: 'auto', title: 'Work space (lines) for this part only' }),
+          isQ ? h('button', {
+            class: 'btn icon' + (p.solution ? ' on' : ''), text: '✎',
+            title: 'Worked solution for this part (teacher key)',
+            onclick: function () {
+              if (state.openSteps.has(p)) state.openSteps.delete(p); else state.openSteps.add(p);
+              changed(true);
+            }
+          }) : h('span'),
           h('button', { class: 'btn icon danger', title: 'Remove part', text: '✕', onclick: function () {
             snapshot();
             q.parts.splice(pi, 1);
             if (!q.parts.length) delete q.parts;
             changed(true);
           } })));
+        if (isQ && (state.openSteps.has(p) || p.solution)) {
+          list.appendChild(h('div', { class: 'part-steps' },
+            textInput(p, 'solution', {
+              multiline: true, rows: 2, emptyDeletes: true,
+              placeholder: model.partLabel(pi, p) + ' worked solution, one step per line'
+            })));
+        }
       });
       partsBox.appendChild(list);
     }
@@ -922,20 +950,33 @@
     });
   }
 
-  // what: 'student' (everything except a separate answer key) or 'key'
-  // (only the separate answer key pages).
+  function hasKey() { return !!state.doc && state.doc.answers.key !== 'none'; }
+
+  // Print one document: the handout or the separate teacher key. Each print
+  // job is its own PDF, so you can print 30 handouts and one key.
   function print(what) {
-    if (what === 'key' && state.doc.answerKey !== 'separate') return;
-    renderToken++;
-    renderPreview().then(function () {
-      document.body.dataset.print = what === 'key' ? 'key' : 'student';
+    var view = what === 'key' ? 'key' : 'handout';
+    if (view === 'key' && !hasKey()) return;
+    var previous = state.view;
+    setView(view, true).then(function () {
+      document.title = stripMarkup(state.doc.title || state.doc.type) + (view === 'key' ? ' – teacher key' : '');
       window.print();
+      if (previous !== view) setView(previous);
     });
   }
-  window.addEventListener('afterprint', function () { delete document.body.dataset.print; });
+
+  function setView(view, now) {
+    state.view = view === 'key' && hasKey() ? 'key' : 'handout';
+    $('sel-view').value = state.view;
+    renderToken++;
+    return now ? renderPreview() : (schedulePreview(true), Promise.resolve());
+  }
 
   function updatePrintButtons() {
-    $('btn-print-key').hidden = !state.doc || state.doc.answerKey !== 'separate';
+    var k = hasKey();
+    $('btn-print-key').hidden = !k;
+    $('sel-view').querySelector('option[value=key]').disabled = !k;
+    if (!k && state.view === 'key') setView('handout');
   }
 
   // ---------- wiring ----------
@@ -959,7 +1000,8 @@
     $('btn-save').addEventListener('click', function () { save(false); });
     $('btn-saveas').addEventListener('click', function () { save(true); });
     $('btn-undo').addEventListener('click', undo);
-    $('btn-print').addEventListener('click', function () { print('student'); });
+    $('btn-print').addEventListener('click', function () { print('handout'); });
+    $('sel-view').addEventListener('change', function () { setView($('sel-view').value); });
     $('btn-print-key').addEventListener('click', function () { print('key'); });
     $('chk-answers').addEventListener('change', function () {
       state.showAnswers = $('chk-answers').checked;
@@ -987,7 +1029,7 @@
       var k = ev.key.toLowerCase();
       if (k === 's') { ev.preventDefault(); save(ev.shiftKey); }
       else if (k === 'o') { ev.preventDefault(); openFile(); }
-      else if (k === 'p') { ev.preventDefault(); print('student'); }
+      else if (k === 'p') { ev.preventDefault(); print(state.view); }
       else if (k === 'z' && !ev.shiftKey && !/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) {
         ev.preventDefault(); undo();
       }

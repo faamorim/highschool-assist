@@ -43,9 +43,13 @@
     },
     "defaultMarks": { "type": "number", "minimum": 0, "default": 1, "description": "Marks for a question or part that does not set its own." },
     "showMarks": { "type": "boolean", "default": false, "description": "Print \"[2 marks]\" next to each question." },
-    "answerKey": {
-      "enum": ["none", "separate", "included"],
-      "description": "Answer key built from the stored answers. separate (default for quizzes): its own pages after the handout, not counted in the page numbers and printed separately from the student copy. included: part of the handout, e.g. a practice copy. none (default for worksheets). Older files may use true (= separate) or false (= none)."
+    "answers": {
+      "type": "object",
+      "description": "Where answers are printed.",
+      "properties": {
+        "handout": { "enum": ["none", "final"], "default": "none", "description": "final: an answers page at the end of the student handout, counted in the page numbers." },
+        "key": { "enum": ["none", "final", "worked"], "description": "A separate teacher key, printed as its own document. final: answers only. worked: each question with its worked solution and answer. Default: final for quizzes, none for worksheets." }
+      }
     },
     "paper": { "enum": ["letter", "a4"], "default": "letter" },
     "blocks": { "type": "array", "items": { "$ref": "#/$defs/block" } }
@@ -101,6 +105,7 @@
         "marks": { "type": "number", "minimum": 0, "description": "Marks for the question; when it has parts or blank table cells, marks for EACH part / cell." },
         "space": { "$ref": "#/$defs/space", "description": "Work space under the question, or under each part when it has parts." },
         "answer": { "$ref": "#/$defs/markup", "description": "Answer for the key (questions without parts)." },
+        "solution": { "$ref": "#/$defs/markup", "description": "Worked solution, shown only in a worked teacher key. One step per line." },
         "columns": { "type": "integer", "minimum": 1, "maximum": 4, "default": 1 },
         "boxed": { "type": "boolean", "default": true, "description": "Draw boxes around the parts." },
         "parts": {
@@ -112,6 +117,7 @@
               "prompt": { "$ref": "#/$defs/markup" },
               "label": { "type": "string", "description": "Replaces the automatic a), b), ..." },
               "answer": { "$ref": "#/$defs/markup" },
+              "solution": { "$ref": "#/$defs/markup", "description": "Worked solution for the teacher key." },
               "marks": { "type": "number", "minimum": 0 },
               "space": { "$ref": "#/$defs/space" }
             }

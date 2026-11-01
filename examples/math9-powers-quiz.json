@@ -15,7 +15,10 @@
     "pageNumbers": true
   },
   "defaultMarks": 0.5,
-  "answerKey": "separate",
+  "answers": {
+    "handout": "none",
+    "key": "worked"
+  },
   "paper": "letter",
   "blocks": [
     {
@@ -114,7 +117,8 @@
       "parts": [
         {
           "prompt": "$5^2+5^{-1} =$",
-          "answer": "$25\\frac{1}{5}$"
+          "answer": "$25\\frac{1}{5}$",
+          "solution": "$= 25 + \\frac{1}{5}$"
         },
         {
           "prompt": "$(2\\times3)^{-2} =$",
@@ -122,7 +126,8 @@
         },
         {
           "prompt": "$3^{-1}+3^{-2} =$",
-          "answer": "$\\frac{4}{9}$"
+          "answer": "$\\frac{4}{9}$",
+          "solution": "$= \\frac{1}{3} + \\frac{1}{9}$\n$= \\frac{3}{9} + \\frac{1}{9}$"
         },
         {
           "prompt": "$(2^2-1)^{-2} =$",
@@ -216,7 +221,8 @@
       "parts": [
         {
           "prompt": "$6a^2\\div(-2)a^5\\times4a^{-7} =$",
-          "answer": "$-12a^{-10}$"
+          "answer": "$-12a^{-10}$",
+          "solution": "$= \\frac{6}{-2}\\,a^{2-5} \\times 4a^{-7}$\n$= -3a^{-3} \\times 4a^{-7}$\n$= -12a^{-3+(-7)}$"
         },
         {
           "prompt": "$45b^{-3}\\div5b^5\\times3b^{-7} =$",
@@ -248,7 +254,8 @@
         },
         {
           "prompt": "$\\left(\\dfrac{2a}{b+4c}\\right)^{-3} =$",
-          "answer": "$\\frac{1}{27}$"
+          "answer": "$\\frac{1}{27}$",
+          "solution": "$= \\left(\\dfrac{2(-3)}{2+4(-1)}\\right)^{-3} = \\left(\\dfrac{-6}{-2}\\right)^{-3}$\n$= 3^{-3} = \\dfrac{1}{3^3}$"
         }
       ]
     },
@@ -260,7 +267,8 @@
       "parts": [
         {
           "prompt": "$2^x = \\dfrac{1}{2}$",
-          "answer": "$x=-1$"
+          "answer": "$x=-1$",
+          "solution": "$2^x = 2^{-1}$, so the exponents are equal"
         },
         {
           "prompt": "$x^{-3} = \\dfrac{1}{125}$",
@@ -272,15 +280,18 @@
         },
         {
           "prompt": "$10^{2-x} = 0.001$",
-          "answer": "$x=5$"
+          "answer": "$x=5$",
+          "solution": "$10^{2-x} = 10^{-3}$\n$2 - x = -3$"
         },
         {
           "prompt": "$243 = \\left(\\dfrac{1}{3}\\right)^{x+4}$",
-          "answer": "$x=-9$"
+          "answer": "$x=-9$",
+          "solution": "$3^5 = \\left(3^{-1}\\right)^{x+4} = 3^{-x-4}$\n$5 = -x - 4$"
         },
         {
           "prompt": "$9^{1+x} = 27$",
-          "answer": "$x=\\frac{1}{2}$"
+          "answer": "$x=\\frac{1}{2}$",
+          "solution": "$\\left(3^2\\right)^{1+x} = 3^3$\n$2 + 2x = 3$\n$2x = 1$"
         }
       ]
     },

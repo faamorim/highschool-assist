@@ -227,26 +227,68 @@
       out = out.concat(fr);
     });
 
-    if (doc.answerKey !== 'none') {
-      var key = WS.model.answerKey(doc);
-      var separate = doc.answerKey === 'separate';
-      // A separate key starts its own set of pages that are not counted in
-      // "1 out of N" and are left out of the student printout.
-      out.push(separate ? { keyBreak: true } : { pageBreak: true });
-      out.push(frag(el('div', 'ws-heading size-m', separate ? 'Answer key' : 'Answers'), null, true));
-      key.forEach(function (q) {
-        var lab = q.label.replace(/\)$/, '');
-        if (/^\d+$/.test(lab)) lab = '#' + lab;
-        var items = q.items.map(function (it) {
-          return (it.label ? '<span class="ak-part">' + M.escapeHtml(it.label) + '</span>&nbsp;' : '') +
-            M.inline(it.answer);
-        }).join(',&ensp; ');
-        var row = el('div', 'ak-item', '<span class="ak-q">' + M.escapeHtml(lab) + ':</span> ' + items);
-        out.push(frag(row, q.blockIndex, false));
-      });
-      if (!key.length) out.push(frag(el('p', 'ak-empty', 'No answers stored yet.'), null, false));
+    if (doc.answers.handout === 'final') {
+      out.push({ pageBreak: true });
+      out.push(frag(el('div', 'ws-heading size-m', 'Answers'), null, true));
+      out = out.concat(finalAnswerFragments(doc));
     }
     return out;
+  }
+
+  function keyLabel(label) {
+    var lab = label.replace(/\)$/, '');
+    return /^\d+$/.test(lab) ? '#' + lab : lab;
+  }
+
+  // "#1: a) ..., b) ..." one line per question.
+  function finalAnswerFragments(doc) {
+    var key = WS.model.answerKey(doc);
+    var out = key.map(function (q) {
+      var items = q.items.filter(function (it) { return it.answer; }).map(function (it) {
+        return (it.label ? '<span class="ak-part">' + M.escapeHtml(it.label) + '</span>&nbsp;' : '') +
+          M.inline(it.answer);
+      }).join(',&ensp; ');
+      return frag(el('div', 'ak-item', '<span class="ak-q">' + M.escapeHtml(keyLabel(q.label)) + ':</span> ' + items),
+        q.blockIndex, false);
+    });
+    if (!out.length) out.push(frag(el('p', 'ak-empty', 'No answers stored yet.'), null, false));
+    return out;
+  }
+
+  // Each question with its parts, the worked steps and the final answer.
+  function workedFragments(doc) {
+    var key = WS.model.answerKey(doc);
+    var out = [];
+    key.forEach(function (q) {
+      var head = el('div', 'wk-q block-start');
+      head.appendChild(el('span', 'q-label', M.escapeHtml(q.label)));
+      head.appendChild(el('div', 'q-body', M.html(q.prompt || '')));
+      out.push(frag(head, q.blockIndex, true));
+      q.items.forEach(function (it) {
+        var row = el('div', 'wk-item');
+        row.appendChild(el('span', 'wk-label', it.label ? M.escapeHtml(it.label) : ''));
+        var b = el('div', 'wk-body');
+        if (it.solution) {
+          if (it.prompt) b.appendChild(el('div', 'wk-prompt', M.inline(it.prompt)));
+          b.appendChild(el('div', 'wk-steps', M.html(it.solution)));
+          if (it.answer) b.appendChild(el('div', 'wk-ans', '<span class="wk-ans-label">Answer:</span> ' + M.inline(it.answer)));
+        } else {
+          // No steps written: prompt and answer on one line.
+          b.appendChild(el('div', 'wk-prompt', (it.prompt ? M.inline(it.prompt) + '&ensp;' : '') +
+            (it.answer ? '<span class="wk-ans">' + M.inline(it.answer) + '</span>' : '')));
+        }
+        row.appendChild(b);
+        out.push(frag(row, q.blockIndex, false));
+      });
+    });
+    if (!out.length) out.push(frag(el('p', 'ak-empty', 'No answers or solutions stored yet.'), null, false));
+    return out;
+  }
+
+  function buildKeyFragments(doc) {
+    var worked = doc.answers.key === 'worked';
+    var out = [frag(el('div', 'ws-heading size-m', worked ? 'Teacher key: worked solutions' : 'Teacher key: answers'), null, true)];
+    return out.concat(worked ? workedFragments(doc) : finalAnswerFragments(doc));
   }
 
   // ---------- pagination ----------
@@ -255,12 +297,12 @@
     return e.offsetTop + e.offsetHeight > body.clientHeight + 0.5;
   }
 
-  function paginate(container, doc, frags) {
+  function paginate(container, doc, frags, isKey) {
     container.innerHTML = '';
     var pages = [];
     var body = null;
 
-    var inKey = false;
+    var inKey = !!isKey;
     function newPage() {
       var first = pages.length === 0;
       var page = el('div', 'page paper-' + doc.paper + (inKey ? ' key-page' : ''));
@@ -277,13 +319,6 @@
     frags.forEach(function (f) {
       if (f.pageBreak) {
         if (body.children.length) newPage();
-        return;
-      }
-      if (f.keyBreak) {
-        inKey = true;
-        container.appendChild(el('div', 'key-divider',
-          'Answer key: not counted in the page numbers and not printed with the student copy (use “Print key”).'));
-        newPage();
         return;
       }
       body.appendChild(f);
@@ -306,7 +341,7 @@
       });
     }
     keyPages.forEach(function (p, i) {
-      p.querySelector('.page-footer').textContent = 'Answer key' +
+      p.querySelector('.page-footer').textContent = 'Teacher key' +
         (keyPages.length > 1 ? ' · ' + (i + 1) + ' of ' + keyPages.length : '');
     });
     pages.forEach(function (p) {
@@ -328,15 +363,18 @@
   }
 
   // Render `doc` into `container` as pages. Returns a promise of the pages.
+  // opts.view: 'handout' (default) or 'key' (the separate teacher key).
   function render(container, doc, opts) {
-    var frags = buildFragments(doc, opts || {});
+    opts = opts || {};
+    var isKey = opts.view === 'key';
+    var frags = isKey ? buildKeyFragments(doc) : buildFragments(doc, opts);
     // Images need their size before we can measure; stage them off-screen.
     var staging = el('div', 'staging');
     frags.forEach(function (f) { if (f.nodeType) staging.appendChild(f); });
     document.body.appendChild(staging);
     return waitForImages(frags).then(function () {
       staging.remove();
-      return paginate(container, doc, frags);
+      return paginate(container, doc, frags, isKey);
     });
   }
 

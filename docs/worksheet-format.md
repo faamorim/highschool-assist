@@ -18,7 +18,7 @@ this page explains it with examples. Full examples live in [`examples/`](../exam
   },
   "footer": { "pageNumbers": true },
   "defaultMarks": 0.5,
-  "answerKey": "separate",
+  "answers": { "handout": "none", "key": "worked" },
   "paper": "letter",
   "blocks": [
     { "kind": "text", "content": "Each question is 0.5 mark. Good luck ☺" },
@@ -46,7 +46,8 @@ this page explains it with examples. Full examples live in [`examples/`](../exam
 | `footer.pageNumbers` | `1 out of 3` at the bottom of each page. |
 | `defaultMarks` | Marks for any question / part that doesn't set its own. |
 | `showMarks` | Print `[2 marks]` next to each question. |
-| `answerKey` | `"separate"`: an answer key on its own pages, **not** counted in "1 out of N" and left out of the student printout (print it with *Print key*). Default for quizzes. `"included"`: answers page is part of the handout (practice copies). `"none"`: no key (default for worksheets). |
+| `answers.handout` | `"final"` adds an answers page at the end of the handout, counted in the page numbers (good for practice worksheets). Default `"none"`. |
+| `answers.key` | A **separate teacher key**, printed as its own document with *Print key*: `"final"` (answers only, default for quizzes), `"worked"` (each question with its worked solution and answer) or `"none"` (default for worksheets). |
 | `paper` | `"letter"` or `"a4"`. |
 
 ## Blocks
@@ -57,7 +58,7 @@ this page explains it with examples. Full examples live in [`examples/`](../exam
 |---|---|
 | `heading` | `text`, `size` (`s`/`m`/`l`), `align` |
 | `text` | `content` (rich text, see below), `align` |
-| `question` | `prompt`, `marks`, `space`, `answer`, `parts`, `columns`, `boxed`, `table`, `label`, `numbered` |
+| `question` | `prompt`, `marks`, `space`, `answer`, `solution`, `parts`, `columns`, `boxed`, `table`, `label`, `numbered` |
 | `example` | Same as a question, labelled EX1, EX2… and never marked. |
 | `table` | `header`, `rows`, `rowLabels`, `widths`, `rowSpace` |
 | `image` | `src` (embedded `data:` URL), `width` (% of page), `align`, `caption` |
@@ -69,7 +70,9 @@ this page explains it with examples. Full examples live in [`examples/`](../exam
 * `space` is the work space in **lines** (≈ 8 mm each). With parts, it is the space under *each* part.
 * `parts` are lettered a), b), c)… and laid out in a grid of `columns` (1–4).
   `"boxed": false` drops the boxes (good for word problems with sub-parts).
-  Each part may set its own `answer`, `marks`, `space` and `label`.
+  Each part may set its own `answer`, `solution`, `marks`, `space` and `label`.
+* `solution` (on a question or a part) holds worked steps, one per line. It only appears in a
+  worked teacher key, never on the student handout.
 * **Marks**: a question without parts is worth `marks`. With parts (or blank table cells),
   `marks` is the value of *each* part / blank cell. Anything unset uses `defaultMarks`.
 * A question can carry a `table` (same shape as a table block) whose blank cells students fill in.
