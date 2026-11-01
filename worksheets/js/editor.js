@@ -1,0 +1,1027 @@
+/*
+ * Editor page: builds the form UI, keeps the live preview in sync, and
+ * handles open / save / print.
+ */
+(function (WS) {
+  'use strict';
+
+  var model = WS.model;
+  var AUTOSAVE_KEY = 'hs-assist.worksheet-editor.autosave';
+  var EXAMPLES = [
+    { file: '../examples/math9-scientific-notation-notes.json', name: 'Math 9 · Scientific notation (worksheet)' },
+    { file: '../examples/math9-powers-quiz.json', name: 'Math 9 · Powers quiz' }
+  ];
+
+  var state = {
+    doc: null,
+    fileHandle: null,
+    fileName: '',
+    dirty: false,
+    showAnswers: false,
+    open: new WeakSet(),
+    undo: [],
+    lastField: null
+  };
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  // ---------- tiny DOM helpers ----------
+
+  function h(tag, attrs) {
+    var e = document.createElement(tag);
+    if (attrs) {
+      Object.keys(attrs).forEach(function (k) {
+        var v = attrs[k];
+        if (v == null || v === false) return;
+        if (k === 'class') e.className = v;
+        else if (k === 'text') e.textContent = v;
+        else if (k === 'html') e.innerHTML = v;
+        else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), v);
+        else if (k === 'style') e.style.cssText = v;
+        else if (v === true) e.setAttribute(k, '');
+        else e.setAttribute(k, v);
+      });
+    }
+    for (var i = 2; i < arguments.length; i++) append(e, arguments[i]);
+    return e;
+  }
+  function append(e, c) {
+    if (c == null || c === false) return;
+    if (Array.isArray(c)) { c.forEach(function (x) { append(e, x); }); return; }
+    e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+  }
+
+  function field(label, input, cls) {
+    return h('label', { class: 'field' + (cls ? ' ' + cls : '') }, h('span', { text: label }), input);
+  }
+
+  function trackFocus(e) {
+    e.addEventListener('focus', function () { state.lastField = e; });
+    return e;
+  }
+
+  // Text bound to obj[key]. Empty string is kept (prompts etc.).
+  function textInput(obj, key, opts) {
+    opts = opts || {};
+    var e = opts.multiline
+      ? h('textarea', { rows: opts.rows || 3, placeholder: opts.placeholder, spellcheck: 'true' })
+      : h('input', { type: 'text', placeholder: opts.placeholder, class: opts.mono ? 'mono' : null });
+    e.value = obj[key] == null ? '' : obj[key];
+    e.addEventListener('input', function () {
+      if (opts.emptyDeletes && e.value === '') delete obj[key];
+      else obj[key] = e.value;
+      changed(false);
+      if (opts.onInput) opts.onInput(e.value);
+    });
+    return trackFocus(e);
+  }
+
+  // Number bound to obj[key]; empty input deletes the key (use the default).
+  function numInput(obj, key, opts) {
+    opts = opts || {};
+    var e = h('input', {
+      type: 'number', min: opts.min, max: opts.max, step: opts.step || 'any', placeholder: opts.placeholder,
+      title: opts.title
+    });
+    if (obj[key] != null) e.value = obj[key];
+    e.addEventListener('input', function () {
+      var v = e.value.trim();
+      if (v === '' || isNaN(+v)) delete obj[key];
+      else obj[key] = +v;
+      changed(false);
+      if (opts.onInput) opts.onInput();
+    });
+    return e;
+  }
+
+  function checkbox(label, get, set, title) {
+    var c = h('input', { type: 'checkbox' });
+    c.checked = !!get();
+    c.addEventListener('change', function () { set(c.checked); changed(true); });
+    return h('label', { class: 'check', title: title }, c, label);
+  }
+
+  function selectInput(obj, key, options, opts) {
+    opts = opts || {};
+    var s = h('select', { title: opts.title });
+    options.forEach(function (o) {
+      s.appendChild(h('option', { value: o[0], text: o[1] }));
+    });
+    s.value = obj[key] != null ? String(obj[key]) : String(opts.def != null ? opts.def : options[0][0]);
+    s.addEventListener('change', function () {
+      var v = s.value;
+      obj[key] = opts.number ? +v : v;
+      changed(opts.structural !== false);
+    });
+    return s;
+  }
+
+  // ---------- state changes ----------
+
+  var previewTimer = null;
+  var renderToken = 0;
+
+  function changed(structural) {
+    state.dirty = true;
+    updateStatus();
+    autosave();
+    if (structural) { buildSettings(); buildBlocks(); }
+    else refreshHeads();
+    schedulePreview();
+  }
+
+  function snapshot() {
+    state.undo.push(JSON.stringify(state.doc));
+    if (state.undo.length > 50) state.undo.shift();
+    $('btn-undo').disabled = false;
+  }
+
+  function undo() {
+    var s = state.undo.pop();
+    $('btn-undo').disabled = !state.undo.length;
+    if (!s) return;
+    state.doc = model.normalize(JSON.parse(s));
+    state.dirty = true;
+    buildAll();
+    autosave();
+  }
+
+  function schedulePreview(now) {
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(renderPreview, now ? 0 : 250);
+  }
+
+  function renderPreview() {
+    var token = ++renderToken;
+    var pane = $('preview-pane');
+    var scroll = pane.scrollTop;
+    var target = document.createElement('div');
+    target.className = 'pages';
+    target.id = 'pages';
+    target.style.zoom = $('sel-zoom').value;
+    var old = $('pages');
+    // Paginate in a hidden copy, then swap, to avoid flicker.
+    target.style.position = 'absolute';
+    target.style.visibility = 'hidden';
+    target.removeAttribute('id');
+    pane.appendChild(target);
+    return WS.render.render(target, state.doc, { showAnswers: state.showAnswers }).then(function () {
+      if (token !== renderToken) { target.remove(); return; }
+      target.style.position = '';
+      target.style.visibility = '';
+      target.id = 'pages';
+      old.replaceWith(target);
+      pane.scrollTop = scroll;
+      document.title = (state.doc.title ? stripMarkup(state.doc.title) + ' – ' : '') + 'Worksheet & Quiz Editor';
+    });
+  }
+
+  function stripMarkup(s) {
+    return String(s).replace(/[$*_]/g, '').replace(/\\[a-z]+/gi, '').trim();
+  }
+
+  function autosave() {
+    try {
+      localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ doc: state.doc, fileName: state.fileName, dirty: state.dirty }));
+    } catch (e) { /* storage full or disabled */ }
+  }
+
+  function updateStatus() {
+    var s = $('status');
+    s.textContent = (state.fileName || 'Untitled') + (state.dirty ? ' (unsaved)' : '');
+    s.classList.toggle('dirty', state.dirty);
+  }
+
+  // ---------- document settings ----------
+
+  function buildSettings() {
+    var doc = state.doc;
+    var hd = doc.header;
+    var root = $('doc-settings');
+    root.innerHTML = '';
+
+    var total = model.totalMarks(doc);
+    var std = model.STANDARD_FIELDS.map(function (f) {
+      return checkbox(f.charAt(0).toUpperCase() + f.slice(1), function () {
+        return hd.fields.indexOf(f) >= 0;
+      }, function (on) {
+        var set = model.STANDARD_FIELDS.filter(function (x) {
+          return x === f ? on : hd.fields.indexOf(x) >= 0;
+        });
+        hd.fields = set;
+      });
+    });
+
+    var customList = h('div');
+    hd.custom.forEach(function (c, i) {
+      customList.appendChild(h('div', { class: 'custom-row' },
+        textInput(c, 'label', { placeholder: 'Field label, e.g. Group' }),
+        selectInput(c, 'width', [['s', 'Short blank'], ['m', 'Medium blank'], ['l', 'Long blank']], { structural: false }),
+        h('button', { class: 'btn icon danger', title: 'Remove field', text: '✕', onclick: function () {
+          hd.custom.splice(i, 1); changed(true);
+        } })));
+    });
+
+    var totalInput = numInput(hd, 'gradeTotal', {
+      min: 0, placeholder: String(total), title: 'Leave empty to add up the marks automatically'
+    });
+    totalInput.id = 'grade-total';
+
+    root.appendChild(h('fieldset', null,
+      h('legend', { text: 'Document' }),
+      h('div', { class: 'row' },
+        field('Type', selectInput(doc, 'type', [['worksheet', 'Worksheet'], ['quiz', 'Quiz']])),
+        field('Title', textInput(doc, 'title', { placeholder: 'e.g. (5) Math 9 Scientific notation (notes)' }), 'grow')),
+      h('div', { class: 'row' },
+        field('Paper', selectInput(doc, 'paper', [['letter', 'Letter'], ['a4', 'A4']])),
+        field('Default marks per question / part', numInput(doc, 'defaultMarks', { min: 0, step: 0.5 })),
+        h('div', { class: 'field' }, h('span', { text: ' ' }),
+          checkbox('Show marks next to questions', function () { return doc.showMarks; },
+            function (v) { doc.showMarks = v; }))),
+      h('div', { class: 'row' },
+        checkbox('Page numbers ("1 out of 3")', function () { return doc.footer.pageNumbers; },
+          function (v) { doc.footer.pageNumbers = v; }),
+        checkbox('Answer key page at the end', function () { return doc.answerKey; },
+          function (v) { doc.answerKey = v; }))
+    ));
+
+    root.appendChild(h('fieldset', null,
+      h('legend', { text: 'Header' }),
+      h('div', { class: 'row' }, h('span', { class: 'muted', text: 'Blanks:' }), std),
+      h('div', { class: 'row' },
+        checkbox('Grade blank', function () { return hd.showGrade; }, function (v) { hd.showGrade = v; }),
+        field('Grade label', textInput(hd, 'gradeLabel', {
+          placeholder: doc.type === 'quiz' ? 'Quiz' : 'Mark', emptyDeletes: true
+        })),
+        field('Out of', totalInput),
+        h('span', { class: 'muted', id: 'auto-total', text: 'auto total: ' + total })),
+      h('div', { class: 'row' },
+        checkbox('Repeat the blanks on every page', function () { return hd.repeat; },
+          function (v) { hd.repeat = v; }, 'Otherwise later pages only show the title')),
+      h('div', { class: 'sub' },
+        h('span', { class: 'sub-title', text: 'Custom fields' }),
+        h('button', { class: 'btn small', text: '+ Add field', onclick: function () {
+          hd.custom.push({ label: 'Group', width: 's' }); changed(true);
+        } }),
+        customList)
+    ));
+  }
+
+  // ---------- blocks ----------
+
+  var KIND_NAMES = {
+    heading: 'Heading', text: 'Text', example: 'Example', question: 'Question',
+    table: 'Table', image: 'Image', pageBreak: 'Page break'
+  };
+
+  function summaryOf(b) {
+    var s = '';
+    switch (b.kind) {
+      case 'heading': s = b.text; break;
+      case 'text': s = b.content; break;
+      case 'question': case 'example':
+        s = b.prompt;
+        if (model.hasParts(b)) s += '  (' + b.parts.length + ' parts)';
+        if (b.table) s += '  (table)';
+        break;
+      case 'table': s = (b.header || []).join(' | ') || b.rows.length + ' rows'; break;
+      case 'image': s = b.caption || (b.src ? 'image' : 'no image yet'); break;
+      case 'pageBreak': s = 'next block starts on a new page'; break;
+    }
+    return String(s || '').replace(/\s+/g, ' ').slice(0, 90);
+  }
+
+  function badgeText(b, label) {
+    return KIND_NAMES[b.kind] + (label ? ' ' + label : '');
+  }
+
+  function refreshHeads() {
+    var labels = model.labels(state.doc);
+    document.querySelectorAll('#blocks .card').forEach(function (card) {
+      var i = +card.dataset.index;
+      var b = state.doc.blocks[i];
+      if (!b) return;
+      card.querySelector('.badge').textContent = badgeText(b, labels[i]);
+      card.querySelector('.summary').textContent = summaryOf(b);
+      var m = card.querySelector('.marks');
+      m.textContent = b.kind === 'question' ? fmt(model.questionMarks(b, state.doc)) + ' mk' : '';
+    });
+    var total = model.totalMarks(state.doc);
+    var at = $('auto-total');
+    if (at) at.textContent = 'auto total: ' + total;
+    var gt = $('grade-total');
+    if (gt) gt.placeholder = String(total);
+  }
+
+  function fmt(n) { return String(Math.round(n * 1000) / 1000); }
+
+  function buildBlocks() {
+    var root = $('blocks');
+    var labels = model.labels(state.doc);
+    root.innerHTML = '';
+    state.doc.blocks.forEach(function (b, i) {
+      root.appendChild(blockCard(b, i, labels[i]));
+    });
+    refreshHeads();
+  }
+
+  function moveBlock(i, d) {
+    var bl = state.doc.blocks;
+    var j = i + d;
+    if (j < 0 || j >= bl.length) return;
+    snapshot();
+    var t = bl[i]; bl[i] = bl[j]; bl[j] = t;
+    changed(true);
+  }
+
+  function blockCard(b, i, label) {
+    var card = h('div', { class: 'card' + (state.open.has(b) ? ' open' : ''), 'data-index': i });
+    var head = h('div', { class: 'card-head', onclick: function (ev) {
+      if (ev.target.closest('.tools')) return;
+      if (state.open.has(b)) state.open.delete(b); else state.open.add(b);
+      card.classList.toggle('open');
+      if (card.classList.contains('open')) flashPreview(i);
+    } },
+      h('span', { class: 'badge k-' + b.kind, text: badgeText(b, label) }),
+      h('span', { class: 'summary' }),
+      h('span', { class: 'marks' }),
+      h('span', { class: 'tools' },
+        h('button', { title: 'Move up', text: '↑', onclick: function () { moveBlock(i, -1); } }),
+        h('button', { title: 'Move down', text: '↓', onclick: function () { moveBlock(i, 1); } }),
+        h('button', { title: 'Duplicate', text: '⧉', onclick: function () {
+          snapshot();
+          var copy = JSON.parse(JSON.stringify(b));
+          state.doc.blocks.splice(i + 1, 0, copy);
+          state.open.add(copy);
+          changed(true);
+        } }),
+        h('button', { title: 'Delete (Undo brings it back)', text: '✕', onclick: function () {
+          snapshot();
+          state.doc.blocks.splice(i, 1);
+          changed(true);
+        } })));
+    card.appendChild(head);
+    var body = h('div', { class: 'card-body' });
+    buildBlockBody(b, body);
+    card.appendChild(body);
+    return card;
+  }
+
+  function buildBlockBody(b, body) {
+    switch (b.kind) {
+      case 'heading':
+        body.appendChild(h('div', { class: 'row' },
+          field('Heading text', textInput(b, 'text'), 'grow'),
+          field('Size', selectInput(b, 'size', [['s', 'Small'], ['m', 'Medium'], ['l', 'Large']], { def: 'm', structural: false })),
+          field('Align', selectInput(b, 'align', [['left', 'Left'], ['center', 'Centre'], ['right', 'Right']], { structural: false }))));
+        break;
+      case 'text':
+        body.appendChild(field('Text (bold, lists, math, blanks: see Help above)',
+          textInput(b, 'content', { multiline: true, rows: 7 })));
+        body.appendChild(h('div', { class: 'row' },
+          field('Align', selectInput(b, 'align', [['left', 'Left'], ['center', 'Centre'], ['right', 'Right']], { structural: false }))));
+        break;
+      case 'question':
+      case 'example':
+        buildQuestionBody(b, body);
+        break;
+      case 'table':
+        buildTableEditor(b, body);
+        break;
+      case 'image':
+        buildImageBody(b, body);
+        break;
+      case 'pageBreak':
+        body.appendChild(h('p', { class: 'muted', text: 'The next block starts on a new page.' }));
+        break;
+    }
+  }
+
+  function buildQuestionBody(q, body) {
+    var isQ = q.kind === 'question';
+    var parts = model.hasParts(q);
+    var many = parts || !!q.table;
+
+    body.appendChild(h('div', { class: 'row' },
+      field('Label', textInput(q, 'label', {
+        placeholder: 'automatic', emptyDeletes: true
+      })),
+      h('div', { class: 'field' }, h('span', { text: ' ' }),
+        checkbox('No label', function () { return q.numbered === false; }, function (v) {
+          if (v) q.numbered = false; else delete q.numbered;
+        }, 'Hide the number/label (and skip it in the numbering)'))));
+    body.appendChild(field(isQ ? 'Question / instructions' : 'Example', textInput(q, 'prompt', {
+      multiline: true, rows: 3, placeholder: isQ ? 'e.g. Write in scientific notation' : 'e.g. Simplify $$\\frac{2.4\\times10^{10}}{3200}$$'
+    })));
+
+    var row = h('div', { class: 'row' });
+    if (isQ) {
+      row.appendChild(field(many ? 'Marks per part' : 'Marks', numInput(q, 'marks', {
+        min: 0, step: 0.5, placeholder: String(state.doc.defaultMarks), title: 'Empty = document default'
+      })));
+    }
+    row.appendChild(field(parts ? 'Work space per part (lines)' : 'Work space (lines)', numInput(q, 'space', {
+      min: 0, step: 0.5, placeholder: parts ? (q.boxed === false ? '1' : '2') : (q.table ? '-' : (isQ ? '3' : '4'))
+    })));
+    if (!parts && !q.table) {
+      row.appendChild(field('Answer (for the key)', textInput(q, 'answer', {
+        placeholder: 'e.g. $x = 5$', emptyDeletes: true
+      }), 'grow'));
+    }
+    body.appendChild(row);
+
+    // Parts
+    var partsBox = h('div', { class: 'sub' });
+    partsBox.appendChild(h('div', { class: 'row' },
+      h('span', { class: 'sub-title', text: 'Parts a), b), c)…' }),
+      parts ? field('Columns', selectInput(q, 'columns', [['1', '1'], ['2', '2'], ['3', '3'], ['4', '4']], { number: true, def: '1' })) : null,
+      parts ? h('div', { class: 'field' }, h('span', { text: ' ' }), checkbox('Boxes', function () { return q.boxed !== false; },
+        function (v) { if (v) delete q.boxed; else q.boxed = false; }, 'Draw a box around each part')) : null,
+      h('div', { class: 'field' }, h('span', { text: ' ' }), h('div', null,
+        h('button', { class: 'btn small', text: '+ Add part', onclick: function () {
+          snapshot();
+          q.parts = q.parts || [];
+          q.parts.push({ prompt: '' });
+          changed(true);
+          focusLastPart(q);
+        } }), ' ',
+        h('button', { class: 'btn small', text: 'Bulk edit', title: 'Edit all parts as text, one per line', onclick: function () {
+          toggleBulk(q, partsBox);
+        } })))));
+    if (parts) {
+      var list = h('div', { class: 'parts' });
+      list.appendChild(h('div', { class: 'part-row head' },
+        h('span'), h('span', { text: 'Part' }), h('span', { text: 'Answer' }),
+        h('span', { text: isQ ? 'Marks' : '' }), h('span', { text: 'Space' }), h('span')));
+      q.parts.forEach(function (p, pi) {
+        list.appendChild(h('div', { class: 'part-row', 'data-part': pi },
+          h('span', { class: 'lbl', text: model.partLabel(pi, p) }),
+          textInput(p, 'prompt', { placeholder: 'e.g. $5^{-1} =$', mono: true }),
+          textInput(p, 'answer', { placeholder: 'answer', emptyDeletes: true, mono: true }),
+          isQ ? numInput(p, 'marks', { min: 0, step: 0.5, placeholder: '' + (q.marks != null ? q.marks : state.doc.defaultMarks) }) : h('span'),
+          numInput(p, 'space', { min: 0, step: 0.5, placeholder: 'auto', title: 'Work space (lines) for this part only' }),
+          h('button', { class: 'btn icon danger', title: 'Remove part', text: '✕', onclick: function () {
+            snapshot();
+            q.parts.splice(pi, 1);
+            if (!q.parts.length) delete q.parts;
+            changed(true);
+          } })));
+      });
+      partsBox.appendChild(list);
+    }
+    body.appendChild(partsBox);
+
+    // Table inside the question
+    var tbox = h('div', { class: 'sub' });
+    if (q.table) {
+      tbox.appendChild(h('div', { class: 'row' },
+        h('span', { class: 'sub-title', text: 'Table' }),
+        h('button', { class: 'btn small danger', text: 'Remove table', onclick: function () {
+          snapshot(); delete q.table; changed(true);
+        } })));
+      buildTableEditor(q.table, tbox);
+    } else {
+      tbox.appendChild(h('button', { class: 'btn small', text: '+ Add a table to this ' + (isQ ? 'question' : 'example'), onclick: function () {
+        snapshot();
+        q.table = { header: ['', ''], rows: [['', { blank: true, answer: '' }]], rowLabels: true };
+        changed(true);
+      } }));
+    }
+    body.appendChild(tbox);
+  }
+
+  function focusLastPart(q) {
+    var i = state.doc.blocks.indexOf(q);
+    var card = document.querySelector('#blocks .card[data-index="' + i + '"]');
+    if (!card) return;
+    var rows = card.querySelectorAll('.part-row[data-part]');
+    var last = rows[rows.length - 1];
+    if (last) last.querySelector('input').focus();
+  }
+
+  // One part per line: "prompt || answer"
+  function toggleBulk(q, box) {
+    var existing = box.querySelector('.bulk');
+    if (existing) { existing.remove(); return; }
+    var ta = h('textarea', { rows: Math.max(4, (q.parts || []).length + 1), spellcheck: 'false' });
+    ta.value = (q.parts || []).map(function (p) {
+      return p.prompt + (p.answer ? ' || ' + p.answer : '');
+    }).join('\n');
+    var bulk = h('div', { class: 'bulk' },
+      h('p', { class: 'muted', html: 'One part per line. Add the answer after <code>||</code>, e.g. <code>$1000 =$ || $1.0\\times10^3$</code>' }),
+      ta,
+      h('div', { class: 'row' },
+        h('button', { class: 'btn small', text: 'Apply', onclick: function () {
+          snapshot();
+          var old = q.parts || [];
+          var lines = ta.value.split('\n').filter(function (l) { return l.trim() !== ''; });
+          q.parts = lines.map(function (l, i) {
+            var k = l.indexOf('||');
+            var p = old[i] ? JSON.parse(JSON.stringify(old[i])) : {};
+            p.prompt = (k >= 0 ? l.slice(0, k) : l).trim();
+            var a = k >= 0 ? l.slice(k + 2).trim() : '';
+            if (a) p.answer = a; else delete p.answer;
+            return p;
+          });
+          if (!q.parts.length) delete q.parts;
+          changed(true);
+        } }),
+        h('button', { class: 'btn small', text: 'Cancel', onclick: function () { bulk.remove(); } })));
+    box.appendChild(bulk);
+    ta.focus();
+  }
+
+  function buildTableEditor(t, box) {
+    model.normalizeTable(t);
+    var cols = t.header ? t.header.length : (t.rows[0] ? t.rows[0].length : 1);
+
+    box.appendChild(h('div', { class: 'row' },
+      checkbox('Header row', function () { return !!t.header; }, function (v) {
+        if (v) { t.header = []; model.normalizeTable(t); } else t.header = null;
+      }),
+      checkbox('Row labels a) b) c)', function () { return !!t.rowLabels; }, function (v) {
+        if (v) t.rowLabels = true; else delete t.rowLabels;
+      }),
+      field('Row height (lines)', numInput(t, 'rowSpace', { min: 0, step: 0.5, placeholder: 'auto' })),
+      field('Column widths', (function () {
+        var e = h('input', { type: 'text', placeholder: 'e.g. 4,3,3', title: 'Relative widths, comma separated', style: 'width:110px' });
+        e.value = Array.isArray(t.widths) ? t.widths.join(',') : '';
+        e.addEventListener('input', function () {
+          var w = e.value.split(',').map(function (x) { return +x.trim(); }).filter(function (x) { return x > 0; });
+          if (w.length) t.widths = w; else delete t.widths;
+          changed(false);
+        });
+        return e;
+      })())));
+
+    function cellEditor(row, ci, isHeader) {
+      var c = row[ci];
+      var blank = model.isBlankCell(c);
+      var input = h('input', { type: 'text', class: 'mono', placeholder: blank ? 'answer' : '' });
+      input.value = blank ? (c.answer || '') : (c == null ? '' : String(c));
+      trackFocus(input);
+      input.addEventListener('input', function () {
+        if (model.isBlankCell(row[ci])) row[ci].answer = input.value;
+        else row[ci] = input.value;
+        changed(false);
+      });
+      var wrap = h('div', { class: 'cell' + (blank ? ' blank' : '') }, input);
+      if (!isHeader) {
+        wrap.appendChild(h('button', {
+          title: blank ? 'Blank cell (students fill it in). Click to make it a given cell.' : 'Make this a blank cell to fill in',
+          text: '▢',
+          onclick: function () {
+            if (model.isBlankCell(row[ci])) row[ci] = row[ci].answer || '';
+            else row[ci] = { blank: true, answer: typeof row[ci] === 'string' ? row[ci] : '' };
+            changed(true);
+          }
+        }));
+      }
+      return wrap;
+    }
+
+    var table = h('table');
+    var colHead = h('tr', null, h('th'));
+    for (var c = 0; c < cols; c++) {
+      (function (ci) {
+        colHead.appendChild(h('th', null, 'col ' + (ci + 1) + ' ',
+          h('button', { class: 'btn icon small danger', title: 'Delete column', text: '✕', onclick: function () {
+            if (cols <= 1) return;
+            snapshot();
+            if (t.header) t.header.splice(ci, 1);
+            t.rows.forEach(function (r) { r.splice(ci, 1); });
+            if (t.widths) t.widths.splice(ci, 1);
+            changed(true);
+          } })));
+      })(c);
+    }
+    table.appendChild(colHead);
+    if (t.header) {
+      var hr = h('tr', null, h('th', { text: 'header' }));
+      for (var hc = 0; hc < cols; hc++) hr.appendChild(h('td', null, cellEditor(t.header, hc, true)));
+      table.appendChild(hr);
+    }
+    t.rows.forEach(function (r, ri) {
+      var tr = h('tr', null, h('th', { text: t.rowLabels ? model.rowLabel(ri) : String(ri + 1) }));
+      for (var ci = 0; ci < cols; ci++) tr.appendChild(h('td', null, cellEditor(r, ci, false)));
+      tr.appendChild(h('td', null, h('button', { class: 'btn icon danger', title: 'Delete row', text: '✕', onclick: function () {
+        snapshot(); t.rows.splice(ri, 1); changed(true);
+      } })));
+      table.appendChild(tr);
+    });
+    box.appendChild(h('div', { class: 'tbl-edit' }, table));
+    box.appendChild(h('div', { class: 'row' },
+      h('button', { class: 'btn small', text: '+ Row', onclick: function () {
+        snapshot();
+        var r = [];
+        for (var i = 0; i < cols; i++) r.push('');
+        t.rows.push(r);
+        changed(true);
+      } }),
+      h('button', { class: 'btn small', text: '+ Column', onclick: function () {
+        snapshot();
+        if (t.header) t.header.push('');
+        t.rows.forEach(function (r) { r.push(''); });
+        if (t.widths) t.widths.push(1);
+        changed(true);
+      } }),
+      h('span', { class: 'muted', text: '▢ marks a blank cell; type its answer in the box.' })));
+  }
+
+  function buildImageBody(b, body) {
+    var file = h('input', { type: 'file', accept: 'image/*' });
+    file.addEventListener('change', function () {
+      var f = file.files[0];
+      if (!f) return;
+      readImage(f).then(function (url) {
+        b.src = url;
+        changed(true);
+      });
+    });
+    body.appendChild(h('div', { class: 'row' },
+      b.src ? h('img', { class: 'img-thumb', src: b.src, alt: '' }) : null,
+      field('Choose image (stored inside the file)', file, 'grow')));
+    body.appendChild(h('div', { class: 'row' },
+      field('Width (% of page)', numInput(b, 'width', { min: 5, max: 100, step: 5 })),
+      field('Align', selectInput(b, 'align', [['center', 'Centre'], ['left', 'Left'], ['right', 'Right']], { structural: false })),
+      field('Caption', textInput(b, 'caption', { emptyDeletes: true }), 'grow')));
+  }
+
+  // Embed an image as a data URL, shrinking very large photos.
+  function readImage(file) {
+    var MAX = 1600;
+    return new Promise(function (resolve, reject) {
+      var r = new FileReader();
+      r.onerror = reject;
+      r.onload = function () {
+        var url = r.result;
+        if (!/^image\/(png|jpeg|webp)$/.test(file.type)) { resolve(url); return; }
+        var img = new Image();
+        img.onload = function () {
+          var scale = Math.min(1, MAX / Math.max(img.width, img.height));
+          if (scale >= 1 && file.size < 600 * 1024) { resolve(url); return; }
+          var cv = document.createElement('canvas');
+          cv.width = Math.round(img.width * scale);
+          cv.height = Math.round(img.height * scale);
+          cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+          resolve(cv.toDataURL(file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.85));
+        };
+        img.onerror = function () { resolve(url); };
+        img.src = url;
+      };
+      r.readAsDataURL(file);
+    });
+  }
+
+  function buildAddBar() {
+    var bar = $('add-bar');
+    bar.innerHTML = '';
+    ['question', 'example', 'text', 'heading', 'table', 'image', 'pageBreak'].forEach(function (k) {
+      bar.appendChild(h('button', { class: 'btn', text: '+ ' + KIND_NAMES[k], onclick: function () {
+        snapshot();
+        var b = model.newBlock(k);
+        state.doc.blocks.push(b);
+        state.open.add(b);
+        changed(true);
+        var cards = document.querySelectorAll('#blocks .card');
+        var last = cards[cards.length - 1];
+        if (last) {
+          last.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          var inp = last.querySelector('.card-body textarea, .card-body input[type=text]');
+          if (inp) inp.focus({ preventScroll: true });
+        }
+      } }));
+    });
+  }
+
+  function buildAll() {
+    buildSettings();
+    buildBlocks();
+    updateStatus();
+    schedulePreview(true);
+    if (!$('tab-json').hidden) $('json-text').value = JSON.stringify(state.doc, null, 2);
+  }
+
+  // ---------- preview <-> editor linking ----------
+
+  function flashPreview(i) {
+    var f = document.querySelector('#pages .frag[data-block="' + i + '"]');
+    if (!f) return;
+    f.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    f.classList.remove('flash');
+    void f.offsetWidth;
+    f.classList.add('flash');
+  }
+
+  function onPreviewClick(ev) {
+    var f = ev.target.closest('.frag[data-block]');
+    if (!f) return;
+    var i = +f.dataset.block;
+    var b = state.doc.blocks[i];
+    if (!b) return;
+    showTab('edit');
+    state.open.add(b);
+    var card = document.querySelector('#blocks .card[data-index="' + i + '"]');
+    if (card) {
+      card.classList.add('open');
+      card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  // ---------- markup insert bar ----------
+
+  var INSERTS = {
+    bold: ['**', '**', 'bold'],
+    italic: ['*', '*', 'italic'],
+    underline: ['__', '__', 'underlined'],
+    math: ['$', '$', 'x^2'],
+    display: ['\n$$', '$$\n', '\\frac{a}{b}'],
+    frac: ['\\frac{', '}{b}', 'a', true],
+    pow: ['^{', '}', 'n', true],
+    times: ['\\times ', '', '', true],
+    div: ['\\div ', '', '', true],
+    box: ['[[box: ', ']]', ''],
+    boxsup: ['[[box-sup: ', ']]', ''],
+    line: ['[[line: ', ']]', ''],
+    bullet: ['\n- ', '', 'item']
+  };
+
+  function insertMarkup(kind) {
+    var e = state.lastField;
+    if (!e || !document.body.contains(e)) return;
+    var spec = INSERTS[kind];
+    var start = e.selectionStart, end = e.selectionEnd;
+    var sel = e.value.slice(start, end);
+    var before = spec[0], after = spec[1];
+    // Math commands outside $...$ get wrapped in $ automatically.
+    if (spec[3] && !insideMath(e.value, start)) { before = '$' + before; after = after + '$'; }
+    var middle = sel || spec[2];
+    e.focus();
+    e.setRangeText(before + middle + after, start, end, 'end');
+    if (!sel && middle) {
+      var s = start + before.length;
+      e.setSelectionRange(s, s + middle.length);
+    }
+    e.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function insideMath(text, pos) {
+    var count = 0;
+    for (var i = 0; i < pos; i++) {
+      if (text[i] === '\\') { i++; continue; }
+      if (text[i] === '$') count++;
+    }
+    return count % 2 === 1;
+  }
+
+  // ---------- tabs ----------
+
+  function showTab(name) {
+    document.querySelectorAll('.tabs button').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.tab === name);
+    });
+    $('tab-edit').hidden = name !== 'edit';
+    $('tab-json').hidden = name !== 'json';
+    $('insert-bar').style.display = name === 'edit' ? '' : 'none';
+    if (name === 'json') {
+      $('json-text').value = JSON.stringify(state.doc, null, 2);
+      $('json-error').textContent = '';
+    }
+  }
+
+  function applyJson() {
+    try {
+      var doc = model.normalize(JSON.parse($('json-text').value));
+      snapshot();
+      state.doc = doc;
+      state.dirty = true;
+      $('json-error').textContent = '';
+      buildAll();
+      autosave();
+      $('json-text').value = JSON.stringify(state.doc, null, 2);
+    } catch (e) {
+      $('json-error').textContent = e.message;
+    }
+  }
+
+  // ---------- open / save ----------
+
+  function confirmDiscard() {
+    return !state.dirty || window.confirm('You have unsaved changes. Discard them?');
+  }
+
+  function loadDoc(doc, meta) {
+    meta = meta || {};
+    state.doc = model.normalize(doc);
+    state.fileHandle = meta.fileHandle || null;
+    state.fileName = meta.fileName || '';
+    state.dirty = !!meta.dirty;
+    state.open = new WeakSet();
+    state.undo = [];
+    $('btn-undo').disabled = true;
+    buildAll();
+    autosave();
+  }
+
+  function parseFileText(text, name) {
+    var doc;
+    try { doc = JSON.parse(text); } catch (e) { throw new Error(name + ' is not valid JSON: ' + e.message); }
+    return model.normalize(doc);
+  }
+
+  function openFile() {
+    if (!confirmDiscard()) return;
+    if (window.showOpenFilePicker) {
+      window.showOpenFilePicker({
+        types: [{ description: 'Worksheet / quiz', accept: { 'application/json': ['.json'] } }]
+      }).then(function (handles) {
+        var hd = handles[0];
+        return hd.getFile().then(function (f) { return f.text(); }).then(function (text) {
+          loadDoc(parseFileText(text, hd.name), { fileHandle: hd, fileName: hd.name });
+        });
+      }).catch(function (e) {
+        if (e && e.name === 'AbortError') return;
+        alert(e.message || e);
+      });
+    } else {
+      $('file-input').value = '';
+      $('file-input').click();
+    }
+  }
+
+  function openFromFileObject(f) {
+    f.text().then(function (text) {
+      loadDoc(parseFileText(text, f.name), { fileName: f.name });
+    }).catch(function (e) { alert(e.message || e); });
+  }
+
+  function suggestedName() {
+    var base = stripMarkup(state.doc.title || state.doc.type).toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || state.doc.type;
+    return state.fileName || base + '.json';
+  }
+
+  function save(as) {
+    var json = JSON.stringify(state.doc, null, 2) + '\n';
+    var useHandle = !!window.showSaveFilePicker;
+    if (useHandle) {
+      var getHandle = (!state.fileHandle || as)
+        ? window.showSaveFilePicker({
+          suggestedName: suggestedName(),
+          types: [{ description: 'Worksheet / quiz', accept: { 'application/json': ['.json'] } }]
+        })
+        : Promise.resolve(state.fileHandle);
+      return getHandle.then(function (hd) {
+        state.fileHandle = hd;
+        return hd.createWritable().then(function (w) {
+          return w.write(json).then(function () { return w.close(); });
+        }).then(function () {
+          state.fileName = hd.name;
+          state.dirty = false;
+          updateStatus();
+          autosave();
+        });
+      }).catch(function (e) {
+        if (e && e.name === 'AbortError') return;
+        console.warn('File System Access save failed, downloading instead', e);
+        download(json);
+      });
+    }
+    download(json);
+    return Promise.resolve();
+  }
+
+  function download(json) {
+    var name = suggestedName();
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    state.fileName = name;
+    state.dirty = false;
+    updateStatus();
+    autosave();
+  }
+
+  function loadExample(file) {
+    if (!confirmDiscard()) return;
+    fetch(file).then(function (r) {
+      if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
+      return r.json();
+    }).then(function (doc) {
+      loadDoc(doc, { fileName: file.split('/').pop() });
+    }).catch(function (e) {
+      alert('Could not load the example (' + e.message + ').\n' +
+        'If you opened this page straight from your disk, use the online version or "Open…" instead.');
+    });
+  }
+
+  function print() {
+    renderToken++;
+    renderPreview().then(function () { window.print(); });
+  }
+
+  // ---------- wiring ----------
+
+  function init() {
+    var exSel = $('sel-example');
+    EXAMPLES.forEach(function (ex) { exSel.appendChild(h('option', { value: ex.file, text: ex.name })); });
+    exSel.addEventListener('change', function () {
+      var v = exSel.value; exSel.value = '';
+      if (v) loadExample(v);
+    });
+    $('sel-new').addEventListener('change', function () {
+      var v = $('sel-new').value; $('sel-new').value = '';
+      if (v && confirmDiscard()) loadDoc(model.newDoc(v));
+    });
+    $('btn-open').addEventListener('click', openFile);
+    $('file-input').addEventListener('change', function () {
+      var f = $('file-input').files[0];
+      if (f) openFromFileObject(f);
+    });
+    $('btn-save').addEventListener('click', function () { save(false); });
+    $('btn-saveas').addEventListener('click', function () { save(true); });
+    $('btn-undo').addEventListener('click', undo);
+    $('btn-print').addEventListener('click', print);
+    $('chk-answers').addEventListener('change', function () {
+      state.showAnswers = $('chk-answers').checked;
+      schedulePreview(true);
+    });
+    $('sel-zoom').addEventListener('change', function () {
+      $('pages').style.zoom = $('sel-zoom').value;
+    });
+    $('preview-pane').addEventListener('click', onPreviewClick);
+    document.querySelectorAll('.tabs button').forEach(function (b) {
+      b.addEventListener('click', function () { showTab(b.dataset.tab); });
+    });
+    $('btn-json-apply').addEventListener('click', applyJson);
+    $('btn-json-reset').addEventListener('click', function () { showTab('json'); });
+    $('insert-bar').addEventListener('mousedown', function (ev) {
+      var b = ev.target.closest('button[data-ins]');
+      if (!b) return;
+      ev.preventDefault(); // keep focus in the text field
+      insertMarkup(b.dataset.ins);
+    });
+
+    document.addEventListener('keydown', function (ev) {
+      var mod = ev.ctrlKey || ev.metaKey;
+      if (!mod) return;
+      var k = ev.key.toLowerCase();
+      if (k === 's') { ev.preventDefault(); save(ev.shiftKey); }
+      else if (k === 'o') { ev.preventDefault(); openFile(); }
+      else if (k === 'p') { ev.preventDefault(); print(); }
+      else if (k === 'z' && !ev.shiftKey && !/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) {
+        ev.preventDefault(); undo();
+      }
+    });
+    window.addEventListener('beforeunload', function (ev) {
+      if (state.dirty && !state.fileHandle) { /* autosaved; still warn */ }
+      if (state.dirty) { ev.preventDefault(); ev.returnValue = ''; }
+    });
+
+    // Drag and drop a .json file anywhere to open it.
+    var hint = null;
+    window.addEventListener('dragover', function (ev) {
+      if (!ev.dataTransfer || [].indexOf.call(ev.dataTransfer.types, 'Files') < 0) return;
+      ev.preventDefault();
+      if (!hint) { hint = h('div', { class: 'drop-hint', text: 'Drop a worksheet / quiz .json file to open it' }); document.body.appendChild(hint); }
+    });
+    window.addEventListener('dragleave', function (ev) {
+      if (ev.relatedTarget == null && hint) { hint.remove(); hint = null; }
+    });
+    window.addEventListener('drop', function (ev) {
+      if (hint) { hint.remove(); hint = null; }
+      var f = ev.dataTransfer && ev.dataTransfer.files[0];
+      if (!f) return;
+      ev.preventDefault();
+      if (/\.json$/i.test(f.name) || f.type === 'application/json') {
+        if (confirmDiscard()) openFromFileObject(f);
+      }
+    });
+
+    buildAddBar();
+
+    // Restore the last session, if any.
+    var restored = false;
+    try {
+      var saved = JSON.parse(localStorage.getItem(AUTOSAVE_KEY) || 'null');
+      if (saved && saved.doc) {
+        loadDoc(saved.doc, { fileName: saved.fileName, dirty: saved.dirty });
+        restored = true;
+      }
+    } catch (e) { /* ignore broken autosave */ }
+    if (!restored) loadDoc(model.newDoc('worksheet'));
+
+    // Page size for printing follows the document.
+    var applyPaper = function () {
+      $('page-size').textContent = '@page { size: ' + (state.doc.paper === 'a4' ? 'A4' : 'letter') + '; margin: 0; }';
+    };
+    window.addEventListener('beforeprint', applyPaper);
+    applyPaper();
+  }
+
+  WS.editor = { state: state, loadDoc: loadDoc, renderPreview: renderPreview };
+  document.addEventListener('DOMContentLoaded', init);
+})(window.WS = window.WS || {});

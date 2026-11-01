@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faamorim.github.io/highschool-assist/schema/worksheet.schema.json",
+  "title": "Worksheet / quiz",
+  "description": "One file describes a printable worksheet or quiz. Every text field uses the markup described in docs/worksheet-format.md (bold, lists, $math$, [[box]] / [[line]] blanks).",
+  "type": "object",
+  "required": ["type", "title", "blocks"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "type": { "enum": ["worksheet", "quiz"] },
+    "title": { "type": "string", "description": "Printed at the top of every page." },
+    "header": {
+      "type": "object",
+      "properties": {
+        "fields": {
+          "type": "array",
+          "items": { "enum": ["name", "date", "period", "block"] },
+          "uniqueItems": true,
+          "description": "Standard blanks shown in the header, in this order."
+        },
+        "showGrade": { "type": "boolean", "description": "Show a \"Label: ____ / N\" blank. N is the sum of the marks unless gradeTotal is set." },
+        "gradeLabel": { "type": "string", "description": "Default: \"Quiz\" for quizzes, \"Mark\" for worksheets." },
+        "gradeTotal": { "type": "number", "minimum": 0, "description": "Override for N. Leave out to add up the marks automatically." },
+        "custom": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["label"],
+            "properties": {
+              "label": { "type": "string" },
+              "width": { "enum": ["s", "m", "l"], "default": "m" }
+            }
+          }
+        },
+        "repeat": { "type": "boolean", "description": "Repeat the blanks (name, grade, ...) on every page. The title always repeats." }
+      }
+    },
+    "footer": {
+      "type": "object",
+      "properties": {
+        "pageNumbers": { "type": "boolean", "default": true, "description": "\"1 out of 3\" at the bottom of each page." }
+      }
+    },
+    "defaultMarks": { "type": "number", "minimum": 0, "default": 1, "description": "Marks for a question or part that does not set its own." },
+    "showMarks": { "type": "boolean", "default": false, "description": "Print \"[2 marks]\" next to each question." },
+    "answerKey": { "type": "boolean", "default": false, "description": "Add an answer page at the end." },
+    "paper": { "enum": ["letter", "a4"], "default": "letter" },
+    "blocks": { "type": "array", "items": { "$ref": "#/$defs/block" } }
+  },
+  "$defs": {
+    "markup": { "type": "string" },
+    "space": { "type": "number", "minimum": 0, "description": "Work space in lines (1 line is about 8 mm)." },
+    "block": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": { "enum": ["heading", "text", "example", "question", "table", "image", "pageBreak"] },
+        "id": { "type": "string", "description": "Optional stable id (useful for generators)." },
+        "generator": {
+          "type": "object",
+          "description": "Reserved for problem generators: which generator produced this block and with what settings, so it can be regenerated.",
+          "properties": {
+            "name": { "type": "string" },
+            "params": { "type": "object" },
+            "seed": { "type": ["number", "string"] }
+          }
+        }
+      },
+      "allOf": [
+        { "if": { "properties": { "kind": { "const": "heading" } } }, "then": { "$ref": "#/$defs/heading" } },
+        { "if": { "properties": { "kind": { "const": "text" } } }, "then": { "$ref": "#/$defs/text" } },
+        { "if": { "properties": { "kind": { "enum": ["question", "example"] } } }, "then": { "$ref": "#/$defs/question" } },
+        { "if": { "properties": { "kind": { "const": "table" } } }, "then": { "$ref": "#/$defs/table" } },
+        { "if": { "properties": { "kind": { "const": "image" } } }, "then": { "$ref": "#/$defs/image" } }
+      ]
+    },
+    "heading": {
+      "required": ["text"],
+      "properties": {
+        "text": { "$ref": "#/$defs/markup" },
+        "size": { "enum": ["s", "m", "l"], "default": "m" },
+        "align": { "enum": ["left", "center", "right"], "default": "left" }
+      }
+    },
+    "text": {
+      "required": ["content"],
+      "properties": {
+        "content": { "$ref": "#/$defs/markup" },
+        "align": { "enum": ["left", "center", "right"] }
+      }
+    },
+    "question": {
+      "description": "A question (numbered 1), 2), ... and marked) or a worked example (labelled EX1, EX2, ... and not marked).",
+      "properties": {
+        "prompt": { "$ref": "#/$defs/markup" },
+        "label": { "type": "string", "description": "Replaces the automatic number / EX label." },
+        "numbered": { "type": "boolean", "default": true, "description": "false hides the label." },
+        "marks": { "type": "number", "minimum": 0, "description": "Marks for the question; when it has parts or blank table cells, marks for EACH part / cell." },
+        "space": { "$ref": "#/$defs/space", "description": "Work space under the question, or under each part when it has parts." },
+        "answer": { "$ref": "#/$defs/markup", "description": "Answer for the key (questions without parts)." },
+        "columns": { "type": "integer", "minimum": 1, "maximum": 4, "default": 1 },
+        "boxed": { "type": "boolean", "default": true, "description": "Draw boxes around the parts." },
+        "parts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["prompt"],
+            "properties": {
+              "prompt": { "$ref": "#/$defs/markup" },
+              "label": { "type": "string", "description": "Replaces the automatic a), b), ..." },
+              "answer": { "$ref": "#/$defs/markup" },
+              "marks": { "type": "number", "minimum": 0 },
+              "space": { "$ref": "#/$defs/space" }
+            }
+          }
+        },
+        "table": { "$ref": "#/$defs/tableData" }
+      }
+    },
+    "table": { "$ref": "#/$defs/tableData" },
+    "tableData": {
+      "type": "object",
+      "required": ["rows"],
+      "properties": {
+        "header": { "type": ["array", "null"], "items": { "$ref": "#/$defs/markup" } },
+        "rows": {
+          "type": "array",
+          "items": { "type": "array", "items": { "$ref": "#/$defs/cell" } }
+        },
+        "rowLabels": { "type": "boolean", "description": "Add an a), b), c) column." },
+        "widths": { "type": "array", "items": { "type": "number", "exclusiveMinimum": 0 }, "description": "Relative column widths." },
+        "rowSpace": { "$ref": "#/$defs/space", "description": "Minimum row height in lines." }
+      }
+    },
+    "cell": {
+      "oneOf": [
+        { "$ref": "#/$defs/markup" },
+        {
+          "type": "object",
+          "required": ["blank"],
+          "properties": {
+            "blank": { "const": true },
+            "answer": { "$ref": "#/$defs/markup" }
+          },
+          "description": "A cell students fill in. Counts as one part for marks."
+        }
+      ]
+    },
+    "image": {
+      "properties": {
+        "src": { "type": "string", "description": "Usually an embedded data: URL so the file is self-contained." },
+        "width": { "type": "number", "minimum": 5, "maximum": 100, "description": "Percent of the page width." },
+        "align": { "enum": ["left", "center", "right"] },
+        "caption": { "$ref": "#/$defs/markup" },
+        "alt": { "type": "string" }
+      }
+    }
+  }
+}
