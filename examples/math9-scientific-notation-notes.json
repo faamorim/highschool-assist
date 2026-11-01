@@ -1,0 +1,345 @@
+{
+  "schemaVersion": 1,
+  "type": "worksheet",
+  "title": "(5) Math 9  Scientific notation (notes)",
+  "header": {
+    "fields": [
+      "name",
+      "date"
+    ],
+    "showGrade": false,
+    "custom": [],
+    "repeat": false
+  },
+  "footer": {
+    "pageNumbers": true
+  },
+  "defaultMarks": 1,
+  "answers": {
+    "handout": "final",
+    "key": "none"
+  },
+  "paper": "letter",
+  "blocks": [
+    {
+      "kind": "text",
+      "content": "Scientists tell us that there are about 120 000 000 000 stars in our galaxy, the Milky Way. Only the first two digits in this number are significant, the zeros are place holders to show the position of the decimal point.\n\nLarge numbers like this are awkward to write and difficult to read. To express very large numbers (and very small numbers) more simply, we use **__scientific notation__**.\n\nWhen a number is expressed in scientific notation, it is written as a product of:\n- A number greater than or equal to 1 but less than 10, and\n- A power of 10"
+    },
+    {
+      "kind": "text",
+      "content": "That is, $120\\,000\\,000\\,000 =$ [[box: 1.2]] $\\times\\ 10$[[box-sup: 11]]\n\n$0.000\\,000\\,000\\,000\\,000\\,000\\,000\\,001\\,67 =$ [[box: 1.67]] $\\times\\ 10$[[box-sup: -24]]"
+    },
+    {
+      "kind": "example",
+      "prompt": "Simplify\n$$\\frac{24\\,000\\,000\\,000 \\times 0.00002}{3200} =$$",
+      "space": 7
+    },
+    {
+      "kind": "example",
+      "prompt": "Write in scientific notation and estimate the answer to one significant digit\n$$\\frac{389527 \\times 6058732}{4793.82} =$$\n$389527 \\doteq 4 \\times 10^5$\n$6058732 \\doteq 6 \\times 10^6$\n$4793.82 \\doteq 5 \\times 10^3$",
+      "space": 4
+    },
+    {
+      "kind": "pageBreak"
+    },
+    {
+      "kind": "heading",
+      "text": "Powers of Ten and Zero exponent",
+      "align": "center",
+      "size": "m"
+    },
+    {
+      "kind": "text",
+      "content": "$10^{7} =$ [[line-s: $10\\,000\\,000$]]\n$10^{6} =$ [[line-s: $1\\,000\\,000$]]\n$10^{5} =$ [[line-s: $100\\,000$]]\n$10^{4} =$ [[line-s: $10\\,000$]]\n$10^{3} =$ [[line-s: $1000$]]\n$10^{2} =$ [[line-s: $100$]]\n$10^{1} =$ [[line-s: $10$]]\n$10^{0} =$ [[line-s: $1$]]\n$10^{-1} =$ [[line-s: $0.1$]]\n$10^{-2} =$ [[line-s: $0.01$]]\n$10^{-3} =$ [[line-s: $0.001$]]"
+    },
+    {
+      "kind": "example",
+      "prompt": "",
+      "columns": 1,
+      "boxed": false,
+      "space": 1,
+      "parts": [
+        {
+          "prompt": "$-3^0 = -(3)^0 =$",
+          "answer": "$-1$"
+        },
+        {
+          "prompt": "$(-5)^0 =$",
+          "answer": "$1$"
+        },
+        {
+          "prompt": "$-(-7)^0 =$",
+          "answer": "$-1$"
+        },
+        {
+          "prompt": "$-\\left(-2\\times5+16\\times(-7)\\right)^0 =$",
+          "answer": "$-1$"
+        }
+      ]
+    },
+    {
+      "kind": "example",
+      "prompt": "Write 3452 using powers of 10\n\n$3452 = 3000 + \\dots$\n$3452 = 3 \\times 10^3 + \\dots$",
+      "space": 4
+    },
+    {
+      "kind": "pageBreak"
+    },
+    {
+      "kind": "heading",
+      "text": "Homework:",
+      "size": "s"
+    },
+    {
+      "kind": "question",
+      "prompt": "Write in scientific notation",
+      "columns": 2,
+      "space": 1,
+      "parts": [
+        {
+          "prompt": "$1000 =$",
+          "answer": "$1.0\\times10^3$"
+        },
+        {
+          "prompt": "$100 =$",
+          "answer": "$1.0\\times10^2$"
+        },
+        {
+          "prompt": "$1100 =$",
+          "answer": "$1.1\\times10^3$"
+        },
+        {
+          "prompt": "$0.0001 =$",
+          "answer": "$1.0\\times10^{-4}$"
+        },
+        {
+          "prompt": "$0.000001 =$",
+          "answer": "$1.0\\times10^{-6}$"
+        },
+        {
+          "prompt": "$0.000092 =$",
+          "answer": "$9.2\\times10^{-5}$"
+        },
+        {
+          "prompt": "$85 =$",
+          "answer": "$8.5\\times10^1$"
+        },
+        {
+          "prompt": "$9900 =$",
+          "answer": "$9.9\\times10^3$"
+        }
+      ]
+    },
+    {
+      "kind": "question",
+      "prompt": "Write in scientific notation",
+      "boxed": false,
+      "space": 0,
+      "parts": [
+        {
+          "prompt": "Speed of light, 300 000 km/s: [[line-l]]",
+          "answer": "$3.0\\times10^5$ km/s"
+        },
+        {
+          "prompt": "Mass of Earth, 5 980 000 000 000 000 000 000 000 kg: [[line]]",
+          "answer": "$5.98\\times10^{24}$ kg"
+        },
+        {
+          "prompt": "Mass of the ball in a ball-point pen, 0.004 g: [[line-l]]",
+          "answer": "$4.0\\times10^{-3}$ g"
+        }
+      ]
+    },
+    {
+      "kind": "question",
+      "prompt": "What numbers complete this table?",
+      "table": {
+        "rowLabels": true,
+        "widths": [
+          5,
+          3,
+          3
+        ],
+        "header": [
+          "**Physical quantity**",
+          "**Decimal notation**",
+          "**Scientific notation**"
+        ],
+        "rows": [
+          [
+            "Temperature of the sun's interior",
+            "1 300 000 °C",
+            {
+              "blank": true,
+              "answer": "$1.3\\times10^6$ °C"
+            }
+          ],
+          [
+            "Thickness of a plastic film",
+            "0.000 01 m",
+            {
+              "blank": true,
+              "answer": "$1.0\\times10^{-5}$ m"
+            }
+          ],
+          [
+            "Mass of an electron",
+            {
+              "blank": true,
+              "answer": "0.000 000 000 000 000 000 000 000 000 92 g"
+            },
+            "$9.2\\times10^{-28}$ g"
+          ],
+          [
+            "Number of stars in our galaxy",
+            {
+              "blank": true,
+              "answer": "120 000 000 000"
+            },
+            "$1.2\\times10^{11}$"
+          ],
+          [
+            "Estimated age of the Earth",
+            "4 500 000 000 years",
+            {
+              "blank": true,
+              "answer": "$4.5\\times10^9$ years"
+            }
+          ],
+          [
+            "Diameter of a hydrogen atom",
+            "0.000 000 011 3 cm",
+            {
+              "blank": true,
+              "answer": "$1.13\\times10^{-8}$ cm"
+            }
+          ],
+          [
+            "Land area of the Earth",
+            {
+              "blank": true,
+              "answer": "150 000 000 km$^2$"
+            },
+            "$1.5\\times10^8\\ \\text{km}^2$"
+          ],
+          [
+            "Ocean area of the Earth",
+            {
+              "blank": true,
+              "answer": "360 000 000 km$^2$"
+            },
+            "$3.6\\times10^8\\ \\text{km}^2$"
+          ],
+          [
+            "Mass of the Earth",
+            {
+              "blank": true,
+              "answer": "5 900 000 000 000 000 000 000 000 kg"
+            },
+            "$5.9\\times10^{24}$ kg"
+          ]
+        ]
+      }
+    },
+    {
+      "kind": "question",
+      "prompt": "Write in scientific notation",
+      "columns": 2,
+      "space": 1,
+      "parts": [
+        {
+          "prompt": "$32\\times10^4 =$",
+          "answer": "$3.2\\times10^5$"
+        },
+        {
+          "prompt": "$49.2\\times10^7 =$",
+          "answer": "$4.92\\times10^8$"
+        },
+        {
+          "prompt": "$0.387\\times10^4 =$",
+          "answer": "$3.87\\times10^3$"
+        },
+        {
+          "prompt": "$672\\times10^{-5} =$",
+          "answer": "$6.72\\times10^{-3}$"
+        },
+        {
+          "prompt": "$0.841\\times10^{-2} =$",
+          "answer": "$8.41\\times10^{-3}$"
+        },
+        {
+          "prompt": "$125\\times10^0 =$",
+          "answer": "$1.25\\times10^2$"
+        }
+      ]
+    },
+    {
+      "kind": "question",
+      "prompt": "Find each value for $n$",
+      "columns": 1,
+      "space": 1.5,
+      "parts": [
+        {
+          "prompt": "$1265 = 1.265\\times10^n$",
+          "answer": "$n=3$"
+        },
+        {
+          "prompt": "$0.0041 = 4.1\\times10^n$",
+          "answer": "$n=-3$"
+        },
+        {
+          "prompt": "$0.005 = 5\\times10^n$",
+          "answer": "$n=-3$"
+        },
+        {
+          "prompt": "$1150 = 1.150\\times10^n$",
+          "answer": "$n=3$"
+        },
+        {
+          "prompt": "$7430000 = 7.43\\times10^n$",
+          "answer": "$n=6$"
+        }
+      ]
+    },
+    {
+      "kind": "question",
+      "prompt": "Write in scientific notation and estimate the answer",
+      "columns": 1,
+      "space": 3,
+      "parts": [
+        {
+          "prompt": "$\\dfrac{582965\\times7123085}{5034.8} =$",
+          "answer": "$8\\times10^8$"
+        },
+        {
+          "prompt": "$\\dfrac{9867341\\times403928}{79386.3} =$",
+          "answer": "$5\\times10^7$"
+        },
+        {
+          "prompt": "$\\dfrac{392876\\times48731\\times0.000186}{0.0000077\\times3865097} =$",
+          "answer": "$1\\times10^5$"
+        },
+        {
+          "prompt": "$\\dfrac{0.00000028\\times78365294}{1873.6\\times29586\\times0.0038} =$",
+          "answer": "$1\\times10^{-4}$"
+        }
+      ]
+    },
+    {
+      "kind": "question",
+      "prompt": "A faucet is leaking at the rate of one drop of water per second. The volume of one drop is $0.1\\ \\text{cm}^3$.",
+      "boxed": false,
+      "space": 6,
+      "parts": [
+        {
+          "prompt": "Calculate the volume of water lost in a year",
+          "answer": "$3\\,153\\,600\\ \\text{cm}^3 = 3.1536\\ \\text{m}^3$"
+        },
+        {
+          "prompt": "Calculate how long it would take to fill a rectangular basin $30\\ \\text{cm}$ by $20\\ \\text{cm}$ by $20\\ \\text{cm}$",
+          "answer": "$120\\,000$ s = 33 h 20 min"
+        }
+      ]
+    }
+  ]
+}

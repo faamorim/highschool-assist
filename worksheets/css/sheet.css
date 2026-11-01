@@ -1,0 +1,185 @@
+/* Printable page styles: shared by the on-screen preview and the printout. */
+
+.pages {
+  --line: 0.32in;          /* one "line" of work space */
+  --ink: #111;
+  --rule: #222;
+  --answer: #c0262d;
+  color: var(--ink);
+  font-family: "Segoe UI", Calibri, Arial, Helvetica, sans-serif;
+  font-size: 12pt;
+  line-height: 1.35;
+}
+
+.page {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  overflow: hidden;
+  padding: 0.5in 0.6in 0.4in;
+}
+.page.paper-letter { width: 8.5in; height: 11in; }
+.page.paper-a4 { width: 210mm; height: 297mm; }
+
+.page-body {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.page-footer {
+  flex: none;
+  height: 0.3in;
+  padding-top: 0.1in;
+  text-align: center;
+  font-size: 11pt;
+}
+
+/* ---------- header ---------- */
+.sheet-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 1.2em;
+  row-gap: 0.25em;
+  margin-bottom: 0.18in;
+}
+.sh-title { font-weight: 600; flex: 0 1 auto; }
+.sh-fields {
+  display: flex;
+  flex-wrap: wrap;
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  column-gap: 1.2em;
+  row-gap: 0.35em;
+}
+.sh-field { white-space: nowrap; }
+.fill {
+  display: inline-block;
+  border-bottom: 1px solid var(--rule);
+  height: 1em;
+  margin-left: 0.25em;
+  vertical-align: baseline;
+}
+.fill-s { width: 0.7in; }
+.fill-m { width: 1.1in; }
+.fill-l { width: 2in; }
+
+/* ---------- blocks ---------- */
+.frag.block-start { margin-top: 0.16in; }
+.page-body > .frag:first-child { margin-top: 0; }
+
+.ws-heading { font-weight: 700; margin-bottom: 0.06in; }
+.ws-heading.size-s { font-size: 12pt; }
+.ws-heading.size-m { font-size: 14pt; }
+.ws-heading.size-l { font-size: 17pt; }
+
+.ws-text p { margin: 0 0 0.6em; }
+.ws-text ul, .ws-text ol { margin: 0 0 0.6em; padding-left: 2.2em; }
+.ws-text li { margin: 0.15em 0; }
+.math-display { margin: 0.35em 0 0.6em; overflow-x: auto; overflow-y: hidden; }
+.math-display .katex-display { margin: 0; text-align: left; }
+.q-prompt .math-display .katex-display, .ws-text .math-display .katex-display { text-align: left; }
+.math-display .katex-display > .katex { text-align: left; }
+
+.ws-image { margin: 0; }
+.ws-image img { max-width: 100%; height: auto; }
+.ws-image figcaption { font-size: 10.5pt; color: #444; margin-top: 0.3em; }
+.img-placeholder {
+  display: inline-block; padding: 1.5em 3em; border: 1px dashed #999; color: #777;
+}
+
+/* Questions and examples */
+.q-head { display: flex; align-items: flex-start; gap: 0.5em; }
+.q-label { flex: none; min-width: 1.6em; font-weight: 500; }
+.q-head.example .q-label { font-weight: 700; }
+.q-label.empty { display: none; }
+.q-body { flex: 1 1 auto; min-width: 0; }
+.q-prompt p { margin: 0 0 0.4em; }
+.q-prompt p:last-child { margin-bottom: 0.3em; }
+.q-prompt ul, .q-prompt ol { margin: 0 0 0.4em; padding-left: 2em; }
+.q-marks { float: right; font-size: 10.5pt; color: #333; margin-left: 1em; }
+
+.space { position: relative; }
+.space > .ans, .ans {
+  color: var(--answer);
+}
+.space > .ans { padding-top: 0.2em; }
+
+/* Parts grid */
+.parts-row {
+  display: grid;
+  margin-left: 2.1em;
+}
+.parts-row.boxed { border: 1px solid var(--rule); }
+.parts-row.boxed.cont { margin-top: -1px; }
+.parts-row.boxed .part + .part { border-left: 1px solid var(--rule); }
+.parts-row.boxed .part { padding: 0.3em 0.6em 0.2em; }
+.parts-row.plain .part { padding: 0.15em 0.6em 0.15em 0.2em; }
+.p-line { display: flex; gap: 0.5em; align-items: baseline; }
+.p-label { flex: none; }
+.p-prompt { min-width: 0; }
+
+/* Tables */
+.ws-table {
+  width: calc(100% - 2.1em);
+  margin-left: 2.1em;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.ws-table.cont { margin-top: -1px; }
+.ws-table.after-parts { margin-top: 0.12in; }
+.ws-table th, .ws-table td {
+  border: 1px solid var(--rule);
+  padding: 0.2em 0.45em;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.ws-table th { font-weight: 700; }
+.ws-table td.row-label { text-align: left; }
+/* A table that is its own block (not inside a question) starts at the margin. */
+.ws-table.standalone { margin-left: 0; width: 100%; }
+
+/* Inline blanks */
+.blank {
+  display: inline-block;
+  vertical-align: -0.25em;
+  text-align: center;
+  color: var(--answer);
+}
+.blank-box { border: 1.5px solid var(--rule); height: 1.5em; min-width: 3em; margin: 0 0.15em; }
+.blank-box.blank-s { min-width: 1.6em; }
+.blank-box.blank-l { min-width: 6em; }
+.blank-box.blank-sup {
+  min-width: 1.1em; height: 1em; vertical-align: 0.75em; border-width: 1.2px; font-size: 0.8em;
+}
+.blank-box .ans { display: inline-block; padding: 0.1em 0.3em 0; }
+.blank-line { border-bottom: 1px solid var(--rule); height: 1.2em; width: 2.6in; margin: 0 0.15em; vertical-align: -0.2em; }
+.blank-line.blank-s { width: 1.2in; }
+.blank-line.blank-l { width: 4in; }
+.blank-line.blank-sup { width: 0.5in; vertical-align: 0.6em; height: 0.9em; }
+.blank .ans { white-space: nowrap; }
+
+/* Worked solutions (teacher key) */
+.wk-q { display: flex; gap: 0.5em; font-weight: 600; }
+.wk-q .q-body p { margin: 0 0 0.3em; }
+.wk-item { display: flex; gap: 0.5em; margin: 0.15em 0 0.5em 2.1em; padding-left: 0.6em; border-left: 2px solid #ddd; }
+.wk-label { flex: none; min-width: 1.4em; }
+.wk-body { flex: 1 1 auto; min-width: 0; }
+.wk-prompt { margin-bottom: 0.15em; }
+.wk-steps p { margin: 0 0 0.25em; }
+.wk-steps .math-display { margin: 0.2em 0 0.3em; }
+.wk-ans { font-weight: 600; }
+.wk-ans-label { color: #555; font-weight: 500; }
+
+/* Answer key */
+.ak-item { margin: 0 0 0.55em; line-height: 1.6; }
+.ak-q { font-weight: 700; margin-right: 0.3em; }
+.ak-part { font-style: italic; }
+
+/* Off-screen staging area used while images load */
+.staging { position: absolute; left: -10000px; top: 0; width: 7in; visibility: hidden; }
+
+.katex { font-size: 1.12em; }
