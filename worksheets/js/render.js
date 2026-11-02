@@ -264,7 +264,18 @@
       head.appendChild(el('span', 'q-label', M.escapeHtml(q.label)));
       head.appendChild(el('div', 'q-body', M.html(q.prompt || '')));
       out.push(frag(head, q.blockIndex, true));
-      q.items.forEach(function (it) {
+      // Lay the parts out in the same columns as the questions (at most 4), one
+      // fragment per row, so the key uses the page width like the handout does.
+      var block = doc.blocks[q.blockIndex] || {};
+      // Single-column questions still get two key columns: steps are narrower than the work space.
+      var cols = Math.max(1, Math.min(4, Math.max(2, +block.columns || 1), q.items.length));
+      var grid = null;
+      q.items.forEach(function (it, k) {
+        if (k % cols === 0) {
+          grid = el('div', 'wk-row');
+          grid.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
+          out.push(frag(grid, q.blockIndex, false));
+        }
         var row = el('div', 'wk-item');
         row.appendChild(el('span', 'wk-label', it.label ? M.escapeHtml(it.label) : ''));
         var b = el('div', 'wk-body');
@@ -278,7 +289,7 @@
             (it.answer ? '<span class="wk-ans">' + M.inline(it.answer) + '</span>' : '')));
         }
         row.appendChild(b);
-        out.push(frag(row, q.blockIndex, false));
+        grid.appendChild(row);
       });
     });
     if (!out.length) out.push(frag(el('p', 'ak-empty', 'No answers or solutions stored yet.'), null, false));

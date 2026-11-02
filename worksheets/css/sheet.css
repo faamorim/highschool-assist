@@ -165,7 +165,8 @@
 /* Worked solutions (teacher key) */
 .wk-q { display: flex; gap: 0.5em; font-weight: 600; }
 .wk-q .q-body p { margin: 0 0 0.3em; }
-.wk-item { display: flex; gap: 0.5em; margin: 0.15em 0 0.5em 2.1em; padding-left: 0.6em; border-left: 2px solid #ddd; }
+.wk-row { display: grid; column-gap: 1.2em; margin: 0.15em 0 0.45em 2.1em; }
+.wk-item { display: flex; gap: 0.5em; padding-left: 0.6em; border-left: 2px solid #ddd; min-width: 0; }
 .wk-label { flex: none; min-width: 1.4em; }
 .wk-body { flex: 1 1 auto; min-width: 0; }
 .wk-prompt { margin-bottom: 0.15em; }
