@@ -11,7 +11,7 @@ function part(name, params, tag, opts) {
 }
 const Q = (prompt, o) => Object.assign({ kind: 'question', prompt }, o);
 const doc = {
-  schemaVersion: 1, type: 'quiz', title: 'Math 9 Powers Practice Quiz',
+  schemaVersion: 1, type: 'quiz', title: '(5+) Math 9 Powers Practice Quiz',
   header: { fields: ['name'], showGrade: true, gradeLabel: 'Quiz', custom: [], repeat: true },
   footer: { pageNumbers: true }, defaultMarks: 0.5, showMarks: true,
   answers: { handout: 'none', key: 'worked' }, paper: 'letter', seed: SEED,
