@@ -184,3 +184,7 @@
 .staging { position: absolute; left: -10000px; top: 0; width: 7in; visibility: hidden; }
 
 .katex { font-size: 1.12em; }
+
+/* Worked key: tall math (fractions) gets its own line height so stacked steps never overlap. */
+.wk-steps .katex, .wk-prompt .katex, .wk-ans .katex { display: inline-block; margin: 0.2em 0; }
+.wk-steps p { line-height: 1.35; }
