@@ -76,7 +76,12 @@
       "kind": "question",
       "generator": {
         "name": "powers.order",
-        "params": {},
+        "params": {
+          "bases": [
+            2,
+            5
+          ]
+        },
         "seed": "practice-2026-11/6",
         "count": 1
       }
