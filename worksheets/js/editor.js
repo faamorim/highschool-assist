@@ -9,7 +9,8 @@
   var AUTOSAVE_KEY = 'hs-assist.worksheet-editor.autosave';
   var EXAMPLES = [
     { file: '../examples/math9-scientific-notation-notes.json', name: 'Math 9 · Scientific notation (worksheet)' },
-    { file: '../examples/math9-powers-quiz.json', name: 'Math 9 · Powers quiz' }
+    { file: '../examples/math9-powers-quiz.json', name: 'Math 9 · Powers quiz' },
+    { file: '../examples/recipes/math9-powers-practice-quiz.json', name: 'Math 9 · Powers practice quiz (generated)' }
   ];
 
   var state = {
@@ -255,6 +256,34 @@
         ], { title: 'A separate document for the teacher, printed with “Print key”' })))
     ));
 
+    if (WS.generated && doc.blocks.some(WS.generated.isGenerated)) {
+      var qs = h('input', { type: 'text', class: 'mono seed', placeholder: 'mathwise',
+        title: 'Generated questions without their own seed use this seed plus their position' });
+      qs.value = doc.seed != null ? doc.seed : '';
+      qs.addEventListener('change', function () {
+        snapshot();
+        if (qs.value.trim() === '') delete doc.seed; else doc.seed = qs.value.trim();
+        doc.blocks.forEach(function (b, i) {
+          if (WS.generated.isGenerated(b) && (b.generator.seed == null || b.generator.seed === '')) WS.generated.regenerate(doc, i);
+        });
+        changed(true);
+      });
+      root.appendChild(h('fieldset', null,
+        h('legend', { text: 'Generated questions' }),
+        h('div', { class: 'row' },
+          field((doc.type === 'quiz' ? 'Quiz' : 'Worksheet') + ' seed', qs),
+          h('div', { class: 'field' }, h('span', { text: ' ' }),
+            h('button', { class: 'btn small primary', text: '🎲 New version',
+              title: 'New numbers for every generated question (questions changed by hand are kept)',
+              onclick: function () {
+                snapshot();
+                var skipped = WS.generated.rerollAll(doc);
+                changed(true);
+                if (skipped) alert(skipped + ' question(s) changed by hand were kept as they are.');
+              } })),
+          h('span', { class: 'muted', text: 'Same seed = same questions. Each question can also have its own seed.' }))));
+    }
+
     root.appendChild(h('fieldset', null,
       h('legend', { text: 'Header' }),
       h('div', { class: 'row' }, h('span', { class: 'muted', text: 'Blanks:' }), std),
@@ -407,10 +436,62 @@
     }
   }
 
+  // ---------- generated questions ----------
+
+  function paramSummary(p) {
+    return Object.keys(p || {}).map(function (k) {
+      var v = p[k];
+      return k + ': ' + (Array.isArray(v) ? v.join(', ') : String(v));
+    }).join(' · ') || 'default settings';
+  }
+
+  function generatorBox(q) {
+    var G = WS.generated;
+    var doc = state.doc;
+    var i = doc.blocks.indexOf(q);
+    var synced = G.available() && G.inSync(doc, i);
+    function redo(fn) {
+      if (!synced && !window.confirm('This question was changed by hand. Replace it with newly generated questions?')) return;
+      snapshot();
+      try { fn(); } catch (e) { alert(e.message || e); }
+      changed(true);
+    }
+    var seed = h('input', { type: 'text', class: 'mono seed', placeholder: G.seedOf(doc, i),
+      title: 'Same seed = same questions. Empty = use the quiz seed.' });
+    seed.value = q.generator.seed != null ? q.generator.seed : '';
+    seed.addEventListener('change', function () {
+      redo(function () {
+        if (seed.value.trim() === '') delete q.generator.seed; else q.generator.seed = seed.value.trim();
+        G.regenerate(doc, i);
+      });
+    });
+    var count = h('input', { type: 'number', min: 1, max: 20, step: 1, class: 'count', title: 'How many parts' });
+    count.value = q.generator.count || (q.parts ? q.parts.length : 1);
+    count.addEventListener('change', function () {
+      var n = Math.max(1, Math.min(20, Math.round(+count.value) || 1));
+      redo(function () { q.generator.count = n; G.regenerate(doc, i); });
+    });
+    return h('div', { class: 'gen-box' + (synced ? '' : ' edited') },
+      h('div', { class: 'row' },
+        h('span', { class: 'gen-title', text: '⚙ Generated: ' + G.title(q) }),
+        h('span', { class: 'muted', text: paramSummary(q.generator.params) })),
+      h('div', { class: 'row' },
+        field('Seed', seed),
+        G.available() ? field('Parts', count) : null,
+        h('div', { class: 'field' }, h('span', { text: ' ' }),
+          h('button', { class: 'btn small primary', text: '🎲 New seed',
+            title: 'Make new questions of the same kind (Undo brings the old ones back)',
+            onclick: function () { redo(function () { G.reroll(doc, i); }); } }))),
+      synced ? null : h('p', { class: 'muted warn',
+        text: G.available() ? 'Changed by hand: saved with all its text. A new seed replaces your changes.'
+          : 'The generator library did not load, so this question cannot be regenerated here.' }));
+  }
+
   function buildQuestionBody(q, body) {
     var isQ = q.kind === 'question';
     var parts = model.hasParts(q);
     var many = parts || !!q.table;
+    if (isQ && WS.generated && WS.generated.isGenerated(q)) body.appendChild(generatorBox(q));
 
     body.appendChild(h('div', { class: 'row' },
       field('Label', textInput(q, 'label', {
@@ -845,6 +926,8 @@
   function loadDoc(doc, meta) {
     meta = meta || {};
     state.doc = model.normalize(doc);
+    var problems = WS.generated ? WS.generated.fillEmpty(state.doc) : [];
+    model.normalize(state.doc);
     state.fileHandle = meta.fileHandle || null;
     state.fileName = meta.fileName || '';
     state.dirty = !!meta.dirty;
@@ -853,6 +936,7 @@
     $('btn-undo').disabled = true;
     buildAll();
     autosave();
+    if (problems.length) setTimeout(function () { alert('Some generated questions could not be made:\n' + problems.join('\n')); }, 0);
   }
 
   function parseFileText(text, name) {
@@ -894,7 +978,8 @@
   }
 
   function save(as) {
-    var json = JSON.stringify(state.doc, null, 2) + '\n';
+    // Generated questions that still match their generator are saved as just the generator line.
+    var json = JSON.stringify(WS.generated ? WS.generated.compact(state.doc) : state.doc, null, 2) + '\n';
     var useHandle = !!window.showSaveFilePicker;
     if (useHandle) {
       var getHandle = (!state.fileHandle || as)

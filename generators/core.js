@@ -221,9 +221,21 @@
   }
 
   // Fill every generator block of a document (other blocks are kept as they are).
+  // A block without its own seed uses the document seed: "<doc.seed>/<block number>".
   function fillDocument(doc, opts) {
     var out = JSON.parse(JSON.stringify(doc));
-    out.blocks = out.blocks.map(function (b) { return b.generator ? fillBlock(b, opts) : b; });
+    out.blocks = out.blocks.map(function (b, i) {
+      if (!b.generator) return b;
+      var g = b.generator;
+      if (g.seed == null || g.seed === '') {
+        var c = JSON.parse(JSON.stringify(b));
+        c.generator.seed = (doc.seed != null && doc.seed !== '' ? doc.seed : 'mathwise') + '/' + (i + 1);
+        var f = fillBlock(c, opts);
+        f.generator = g;
+        return f;
+      }
+      return fillBlock(b, opts);
+    });
     return out;
   }
 

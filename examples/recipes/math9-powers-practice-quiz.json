@@ -20,6 +20,7 @@
     "key": "worked"
   },
   "paper": "letter",
+  "seed": "practice-2026-11",
   "blocks": [
     {
       "kind": "text",
@@ -30,7 +31,6 @@
       "generator": {
         "name": "powers.negative-exponent",
         "params": {},
-        "seed": "practice-2026-11/2",
         "count": 9
       }
     },
@@ -45,7 +45,6 @@
             "negative"
           ]
         },
-        "seed": "practice-2026-11/3",
         "count": 3
       }
     },
@@ -59,7 +58,6 @@
             "variable"
           ]
         },
-        "seed": "practice-2026-11/4",
         "count": 3
       }
     },
@@ -68,7 +66,6 @@
       "generator": {
         "name": "powers.evaluate-mixed",
         "params": {},
-        "seed": "practice-2026-11/5",
         "count": 4
       }
     },
@@ -76,8 +73,12 @@
       "kind": "question",
       "generator": {
         "name": "powers.order",
-        "params": {},
-        "seed": "practice-2026-11/6",
+        "params": {
+          "bases": [
+            2,
+            5
+          ]
+        },
         "count": 1
       }
     },
@@ -86,7 +87,6 @@
       "generator": {
         "name": "powers.positive-exponents",
         "params": {},
-        "seed": "practice-2026-11/7",
         "count": 4
       }
     },
@@ -95,7 +95,6 @@
       "generator": {
         "name": "powers.power-of-power",
         "params": {},
-        "seed": "practice-2026-11/8",
         "count": 4
       }
     },
@@ -106,7 +105,6 @@
         "params": {
           "terms": 2
         },
-        "seed": "practice-2026-11/9",
         "count": 4
       }
     },
@@ -118,7 +116,6 @@
         "params": {
           "terms": 3
         },
-        "seed": "practice-2026-11/10",
         "count": 3
       }
     },
@@ -155,7 +152,6 @@
       "generator": {
         "name": "powers.solve-exponential",
         "params": {},
-        "seed": "practice-2026-11/12",
         "count": 6
       }
     },
@@ -164,7 +160,6 @@
       "generator": {
         "name": "sci.to-scientific",
         "params": {},
-        "seed": "practice-2026-11/13",
         "count": 4
       }
     },
@@ -173,7 +168,6 @@
       "generator": {
         "name": "sci.normalize",
         "params": {},
-        "seed": "practice-2026-11/14",
         "count": 4
       }
     },
@@ -182,7 +176,6 @@
       "generator": {
         "name": "sci.find-exponent",
         "params": {},
-        "seed": "practice-2026-11/15",
         "count": 3
       }
     }
