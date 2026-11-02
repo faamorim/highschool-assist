@@ -1,0 +1,187 @@
+{
+  "schemaVersion": 1,
+  "type": "quiz",
+  "title": "(5+) Math 9  Powers Practice Quiz (short)",
+  "header": {
+    "fields": [
+      "name"
+    ],
+    "showGrade": true,
+    "gradeLabel": "Quiz",
+    "custom": [],
+    "repeat": true
+  },
+  "footer": {
+    "pageNumbers": true
+  },
+  "defaultMarks": 0.5,
+  "answers": {
+    "handout": "none",
+    "key": "worked"
+  },
+  "paper": "letter",
+  "seed": "practice-short-2026-11",
+  "blocks": [
+    {
+      "kind": "text",
+      "content": "Practice quiz: each question is 0.5 mark. Good luck ☺"
+    },
+    {
+      "kind": "question",
+      "generator": {
+        "name": "powers.negative-exponent",
+        "params": {},
+        "count": 6
+      }
+    },
+    {
+      "kind": "question",
+      "prompt": "Write each expression as a power",
+      "generator": {
+        "name": "powers.product-quotient",
+        "params": {
+          "bases": [
+            "number",
+            "negative"
+          ]
+        },
+        "count": 2
+      },
+      "columns": 2
+    },
+    {
+      "kind": "question",
+      "prompt": "Simplify",
+      "generator": {
+        "name": "powers.product-quotient",
+        "params": {
+          "bases": [
+            "variable"
+          ]
+        },
+        "count": 2
+      },
+      "columns": 2
+    },
+    {
+      "kind": "question",
+      "generator": {
+        "name": "powers.evaluate-mixed",
+        "params": {},
+        "count": 2
+      }
+    },
+    {
+      "kind": "question",
+      "generator": {
+        "name": "powers.order",
+        "params": {
+          "bases": [
+            2,
+            5
+          ],
+          "count": 4
+        },
+        "count": 1
+      }
+    },
+    {
+      "kind": "question",
+      "generator": {
+        "name": "powers.positive-exponents",
+        "params": {
+          "forms": [
+            "negative",
+            "decimal"
+          ]
+        },
+        "count": 2
+      },
+      "columns": 2
+    },
+    {
+      "kind": "question",
+      "generator": {
+        "name": "powers.power-of-power",
+        "params": {},
+        "count": 2
+      }
+    },
+    {
+      "kind": "question",
+      "generator": {
+        "name": "powers.monomials",
+        "params": {
+          "terms": 2
+        },
+        "count": 2
+      }
+    },
+    {
+      "kind": "question",
+      "columns": 1,
+      "generator": {
+        "name": "powers.monomials",
+        "params": {
+          "terms": 3
+        },
+        "count": 1
+      }
+    },
+    {
+      "kind": "question",
+      "prompt": "Evaluate each expression for $a=-3,\\ b=4,\\ c=-2$",
+      "columns": 2,
+      "space": 1.5,
+      "parts": [
+        {
+          "prompt": "$(a+b+c)^{-1} =$",
+          "answer": "$-1$",
+          "solution": "$= (-3+4+(-2))^{-1}$\n$= (-1)^{-1}$\n$= \\dfrac{1}{-1}$"
+        },
+        {
+          "prompt": "$\\left(\\dfrac{2a}{b+c}\\right)^{-2} =$",
+          "answer": "$\\frac{1}{9}$",
+          "solution": "$= \\left(\\dfrac{2(-3)}{4+(-2)}\\right)^{-2}$\n$= \\left(\\dfrac{-6}{2}\\right)^{-2}$\n$= (-3)^{-2}$\n$= \\dfrac{1}{(-3)^2}$"
+        }
+      ]
+    },
+    {
+      "kind": "question",
+      "generator": {
+        "name": "powers.solve-exponential",
+        "params": {
+          "forms": [
+            "unknown-exponent",
+            "power-of-ten"
+          ]
+        },
+        "count": 2
+      }
+    },
+    {
+      "kind": "question",
+      "generator": {
+        "name": "sci.to-scientific",
+        "params": {},
+        "count": 2
+      }
+    },
+    {
+      "kind": "question",
+      "generator": {
+        "name": "sci.normalize",
+        "params": {},
+        "count": 2
+      }
+    },
+    {
+      "kind": "question",
+      "generator": {
+        "name": "sci.find-exponent",
+        "params": {},
+        "count": 2
+      }
+    }
+  ]
+}
