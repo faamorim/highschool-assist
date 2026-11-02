@@ -1,0 +1,298 @@
+/*
+ * Mathwise generator library: shared core.
+ *
+ * A generator is a plain object registered with Mathwise.generators.register():
+ *
+ *   {
+ *     name: 'powers.product-quotient',     // stable id, stored in documents
+ *     title: 'Product and quotient of powers',
+ *     prompt: 'Simplify',                   // default question prompt for a block
+ *     columns: 3, workSpace: 1.5,           // suggested layout for a block of parts
+ *     whole: false,                         // true: one generated item IS the question (no parts)
+ *     params: [ ...parameter descriptions, see below... ],
+ *     validate: function (values) { return [friendly error strings]; },   // optional
+ *     generate: function (values, rng, ctx) { return { prompt, answer, steps } }
+ *   }
+ *
+ * Parameters show real values (never "easy/hard"):
+ *   { key, label, type: 'number', min, max, default }
+ *   { key, label, type: 'choice', values: [{ value, label }], default }
+ *   { key, label, type: 'set',    values: [{ value, label }], default: [...] }   // pick any
+ *   { key, label, type: 'toggle', default: true }
+ *
+ * Determinism: the seed is always passed in (no clock, no Math.random). A block
+ * stores { name, params, seed, count } and part i is generated from (seed, i),
+ * so the same block always rebuilds the same questions.
+ *
+ * Math is LaTeX inside $…$ (the worksheet markup); steps are one line each,
+ * every rule application its own line (7^{-8}÷7^2 = 7^{-8-2} = 7^{-10}).
+ *
+ * Classic script: works from file://, in the editor page, and in node via vm.
+ */
+(function (root) {
+  'use strict';
+  var MW = root.Mathwise = root.Mathwise || {};
+  var registry = {};
+  var order = [];
+
+  // ---------- seeded random numbers ----------
+
+  function hashString(s) {
+    var h = 2166136261 >>> 0;
+    for (var i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    // Final avalanche (murmur3 fmix32) so "seed:0" and "seed:1" start far apart.
+    h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b) >>> 0;
+    h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35) >>> 0;
+    h ^= h >>> 16;
+    return h >>> 0;
+  }
+
+  function mulberry32(a) {
+    return function () {
+      a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function makeRng(seed) {
+    var next = mulberry32(hashString(String(seed)));
+    var rng = {
+      next: next,
+      int: function (lo, hi) { return lo + Math.floor(next() * (hi - lo + 1)); },
+      pick: function (arr) { return arr[Math.floor(next() * arr.length)]; },
+      chance: function (p) { return next() < p; },
+      sign: function () { return next() < 0.5 ? -1 : 1; },
+      shuffle: function (arr) {
+        var a = arr.slice();
+        for (var i = a.length - 1; i > 0; i--) {
+          var j = Math.floor(next() * (i + 1));
+          var t = a[i]; a[i] = a[j]; a[j] = t;
+        }
+        return a;
+      },
+      // Integer in [lo, hi] that passes ok(); throws if none found (generator bug or impossible params).
+      intWhere: function (lo, hi, ok) {
+        var c = [];
+        for (var v = lo; v <= hi; v++) if (ok(v)) c.push(v);
+        if (!c.length) throw new Error('No value in [' + lo + ', ' + hi + '] fits.');
+        return rng.pick(c);
+      }
+    };
+    return rng;
+  }
+
+  function partSeed(seed, index, attempt) {
+    return String(seed) + ':' + index + (attempt ? '#' + attempt : '');
+  }
+
+  // ---------- registry ----------
+
+  function register(gen) {
+    if (!gen || !gen.name || typeof gen.generate !== 'function') throw new Error('Bad generator');
+    if (!registry[gen.name]) order.push(gen.name);
+    registry[gen.name] = gen;
+    return gen;
+  }
+
+  function get(name) {
+    var g = registry[name];
+    if (!g) throw new Error('Unknown generator: ' + name);
+    return g;
+  }
+
+  function list() { return order.map(function (n) { return registry[n]; }); }
+
+  function defaults(gen) {
+    var v = {};
+    (gen.params || []).forEach(function (p) {
+      v[p.key] = Array.isArray(p.default) ? p.default.slice() : p.default;
+    });
+    return v;
+  }
+
+  function withDefaults(gen, values) {
+    var v = defaults(gen);
+    Object.keys(values || {}).forEach(function (k) { v[k] = values[k]; });
+    return v;
+  }
+
+  // Friendly errors for out-of-range values, then the generator's own checks.
+  function validate(gen, values) {
+    var v = withDefaults(gen, values);
+    var errs = [];
+    (gen.params || []).forEach(function (p) {
+      var x = v[p.key];
+      var allowed = (p.values || []).map(function (o) { return o.value; });
+      if (p.type === 'number') {
+        if (typeof x !== 'number' || !isFinite(x) || Math.floor(x) !== x) errs.push(p.label + ' must be a whole number.');
+        else if (x < p.min || x > p.max) errs.push(p.label + ' must be from ' + p.min + ' to ' + p.max + '.');
+      } else if (p.type === 'choice') {
+        if (allowed.indexOf(x) < 0) errs.push(p.label + ': choose one of ' + allowed.join(', ') + '.');
+      } else if (p.type === 'set') {
+        if (!Array.isArray(x) || !x.length) errs.push(p.label + ': choose at least one.');
+        else x.forEach(function (y) { if (allowed.indexOf(y) < 0) errs.push(p.label + ': "' + y + '" is not an option.'); });
+      } else if (p.type === 'toggle') {
+        if (typeof x !== 'boolean') errs.push(p.label + ' must be on or off.');
+      }
+    });
+    if (!errs.length && gen.validate) errs = errs.concat(gen.validate(v) || []);
+    return errs;
+  }
+
+  // Spread a set-type parameter across the parts of a block, in the order the
+  // generator lists the options (so a block of 9 reads like a hand-made one:
+  // simple forms first). Single items pick at random.
+  function spread(gen, key, chosen, rng, ctx) {
+    var p = (gen.params || []).filter(function (q) { return q.key === key; })[0];
+    var ordered = p ? p.values.map(function (o) { return o.value; }).filter(function (x) { return chosen.indexOf(x) >= 0; }) : chosen.slice();
+    if (ctx && ctx.count > 1 && typeof ctx.index === 'number') {
+      return ordered[Math.floor(ctx.index * ordered.length / ctx.count)];
+    }
+    return rng.pick(ordered);
+  }
+
+  /**
+   * Run one generator once.
+   * opts.output: 'steps' (default) | 'answer' | 'none'
+   * opts.index / opts.count: position in a block (used to spread forms).
+   * Returns { prompt, answer, steps: [..], workSpace }.
+   */
+  function generate(name, values, seed, opts) {
+    var gen = get(name);
+    opts = opts || {};
+    var v = withDefaults(gen, values);
+    var errs = validate(gen, v);
+    if (errs.length) throw new Error(gen.title + ': ' + errs.join(' '));
+    var ctx = { index: opts.index, count: opts.count, spread: function (key, rng) { return spread(gen, key, v[key], rng, ctx); } };
+    var r = gen.generate(v, makeRng(seed), ctx);
+    var out = { prompt: r.prompt, workSpace: r.workSpace || gen.workSpace || 1 };
+    var output = opts.output || 'steps';
+    if (output !== 'none') out.answer = r.answer;
+    if (output === 'steps') out.steps = r.steps || [];
+    return out;
+  }
+
+  /**
+   * Fill a worksheet question block from its `generator` field:
+   *   { kind: 'question', generator: { name, params, seed, count } }
+   * Parts get prompt, answer and solution (steps joined one per line).
+   * Repeated prompts inside a block are re-rolled deterministically.
+   * Returns a new block; the input is not changed.
+   */
+  function fillBlock(block, opts) {
+    var g = block.generator;
+    var gen = get(g.name);
+    var out = JSON.parse(JSON.stringify(block));
+    var steps = !opts || opts.output !== 'answer';
+    function toItem(r) {
+      var it = { prompt: r.prompt, answer: r.answer };
+      if (steps && r.steps && r.steps.length) it.solution = r.steps.join('\n');
+      return it;
+    }
+    if (out.prompt == null) out.prompt = gen.prompt || 'Answer';
+    if (out.columns == null && gen.columns) out.columns = gen.columns;
+    if (out.space == null) out.space = gen.workSpace || 1;
+    if (gen.whole) {
+      var w = generate(g.name, g.params, partSeed(g.seed, 0), { output: 'steps' });
+      out.prompt = w.prompt;   // a whole-question generator writes the full prompt
+      out.answer = w.answer;
+      if (steps && w.steps.length) out.solution = w.steps.join('\n');
+      delete out.parts;
+      return out;
+    }
+    var count = g.count || 4;
+    var seen = {};
+    out.parts = [];
+    for (var i = 0; i < count; i++) {
+      var r, attempt = 0;
+      do {
+        r = generate(g.name, g.params, partSeed(g.seed, i, attempt), { index: i, count: count });
+        attempt++;
+      } while (seen[r.prompt] && attempt < 50);
+      seen[r.prompt] = true;
+      out.parts.push(toItem(r));
+    }
+    return out;
+  }
+
+  // Fill every generator block of a document (other blocks are kept as they are).
+  function fillDocument(doc, opts) {
+    var out = JSON.parse(JSON.stringify(doc));
+    out.blocks = out.blocks.map(function (b) { return b.generator ? fillBlock(b, opts) : b; });
+    return out;
+  }
+
+  // ---------- math helpers shared by generators ----------
+
+  function gcd(a, b) { a = Math.abs(a); b = Math.abs(b); while (b) { var t = a % b; a = b; b = t; } return a; }
+
+  // Exact fraction {n, d} with d > 0, reduced.
+  function frac(n, d) {
+    if (d === undefined) d = 1;
+    if (d === 0) throw new Error('Division by zero');
+    if (d < 0) { n = -n; d = -d; }
+    var g = gcd(n, d) || 1;
+    return { n: n / g, d: d / g };
+  }
+  function fadd(a, b) { return frac(a.n * b.d + b.n * a.d, a.d * b.d); }
+
+  // Thin-space groups of three for numbers of 5+ digits (10\,000), like the samples.
+  function num(n) {
+    var s = String(Math.abs(n));
+    if (s.length >= 5 && s.indexOf('.') < 0) s = s.replace(/\B(?=(\d{3})+(?!\d))/g, '\\,');
+    return (n < 0 ? '-' : '') + s;
+  }
+
+  // \frac{n}{d} (or \dfrac with big=true); whole numbers stay whole.
+  function fracTex(f, big) {
+    if (f.d === 1) return num(f.n);
+    return (f.n < 0 ? '-' : '') + '\\' + (big ? 'd' : '') + 'frac{' + num(Math.abs(f.n)) + '}{' + num(f.d) + '}';
+  }
+
+  // 25\frac{1}{5} for improper fractions, like the samples.
+  function mixedTex(f) {
+    if (f.d === 1 || Math.abs(f.n) < f.d) return fracTex(f);
+    var w = Math.trunc(f.n / f.d), r = Math.abs(f.n % f.d);
+    return num(w) + '\\frac{' + r + '}{' + f.d + '}';
+  }
+
+  // b^{e}: wraps negative bases in brackets; single-character exponents lose braces.
+  function pow(base, e) {
+    var b = typeof base === 'number' && base < 0 ? '(' + base + ')' : String(base);
+    var es = String(e);
+    return b + '^' + (es.length === 1 ? es : '{' + es + '}');
+  }
+
+  // The exponent sum as written in a step: "4+(-11)", "-8-(-15)", "-5-3".
+  function opExp(a, op, b) {
+    return a + op + (b < 0 ? '(' + b + ')' : b);
+  }
+
+  // Coefficient times variable power: 5n^7, -x^3, 4, -2t, x^{-9}.
+  function mono(c, v, e) {
+    if (e === 0) return num(c);
+    var vp = e === 1 ? v : pow(v, e);
+    if (c === 1) return vp;
+    if (c === -1) return '-' + vp;
+    return num(c) + vp;
+  }
+
+  MW.generators = {
+    register: register,
+    get: get,
+    list: list,
+    defaults: defaults,
+    validate: validate,
+    generate: generate,
+    fillBlock: fillBlock,
+    fillDocument: fillDocument,
+    makeRng: makeRng,
+    partSeed: partSeed
+  };
+  MW.math = { gcd: gcd, frac: frac, fadd: fadd, num: num, fracTex: fracTex, mixedTex: mixedTex, pow: pow, opExp: opExp, mono: mono };
+})(typeof window !== 'undefined' ? window : this);
