@@ -71,3 +71,13 @@ for (const f of fs.readdirSync(path.join(__dirname, '..', 'examples')).filter((f
 
 if (fails.length) { console.error(fails.slice(0, 30).join('\n')); console.error(fails.length + ' problems'); process.exit(1); }
 console.log('Generators OK: ' + items + ' items, ' + checked + ' checked numerically.');
+
+// The short recipe rebuilds exactly the committed generated quiz.
+{
+  const root = path.join(__dirname, '..', 'examples');
+  const recipe = JSON.parse(fs.readFileSync(path.join(root, 'recipes', 'math9-powers-practice-quiz.json'), 'utf8'));
+  const built = G.fillDocument(recipe);
+  const saved = JSON.parse(fs.readFileSync(path.join(root, 'math9-powers-practice-quiz-generated.json'), 'utf8'));
+  assert.strictEqual(JSON.stringify(built), JSON.stringify(saved), 'recipe rebuilds the generated example (run tools/generate.js)');
+  console.log('Recipe rebuilds the generated example quiz.');
+}

@@ -20,6 +20,7 @@
     "key": "worked"
   },
   "paper": "letter",
+  "seed": "practice-2026-11",
   "blocks": [
     {
       "kind": "text",
@@ -30,7 +31,6 @@
       "generator": {
         "name": "powers.negative-exponent",
         "params": {},
-        "seed": "practice-2026-11/2",
         "count": 9
       },
       "prompt": "Evaluate",
@@ -95,7 +95,6 @@
             "negative"
           ]
         },
-        "seed": "practice-2026-11/3",
         "count": 3
       },
       "columns": 3,
@@ -128,7 +127,6 @@
             "variable"
           ]
         },
-        "seed": "practice-2026-11/4",
         "count": 3
       },
       "columns": 3,
@@ -156,7 +154,6 @@
       "generator": {
         "name": "powers.evaluate-mixed",
         "params": {},
-        "seed": "practice-2026-11/5",
         "count": 4
       },
       "prompt": "Evaluate",
@@ -195,7 +192,6 @@
             5
           ]
         },
-        "seed": "practice-2026-11/6",
         "count": 1
       },
       "prompt": "Express as a power of $5$, and then arrange in order from least to greatest\n$$\\frac{1}{625},\\ \\frac{1}{5},\\ \\frac{1}{25},\\ 625,\\ 5,\\ 1$$",
@@ -208,7 +204,6 @@
       "generator": {
         "name": "powers.positive-exponents",
         "params": {},
-        "seed": "practice-2026-11/7",
         "count": 4
       },
       "prompt": "Express as powers with positive exponents",
@@ -240,7 +235,6 @@
       "generator": {
         "name": "powers.power-of-power",
         "params": {},
-        "seed": "practice-2026-11/8",
         "count": 4
       },
       "prompt": "Simplify",
@@ -276,7 +270,6 @@
         "params": {
           "terms": 2
         },
-        "seed": "practice-2026-11/9",
         "count": 4
       },
       "prompt": "Simplify",
@@ -313,7 +306,6 @@
         "params": {
           "terms": 3
         },
-        "seed": "practice-2026-11/10",
         "count": 3
       },
       "prompt": "Simplify",
@@ -369,7 +361,6 @@
       "generator": {
         "name": "powers.solve-exponential",
         "params": {},
-        "seed": "practice-2026-11/12",
         "count": 6
       },
       "prompt": "Solve",
@@ -413,7 +404,6 @@
       "generator": {
         "name": "sci.to-scientific",
         "params": {},
-        "seed": "practice-2026-11/13",
         "count": 4
       },
       "prompt": "Write in scientific notation",
@@ -447,7 +437,6 @@
       "generator": {
         "name": "sci.normalize",
         "params": {},
-        "seed": "practice-2026-11/14",
         "count": 4
       },
       "prompt": "Write in scientific notation",
@@ -481,7 +470,6 @@
       "generator": {
         "name": "sci.find-exponent",
         "params": {},
-        "seed": "practice-2026-11/15",
         "count": 3
       },
       "prompt": "Find each value for $n$",

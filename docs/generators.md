@@ -25,9 +25,34 @@ A question block can carry a generator instead of hand-written parts:
   "generator": { "name": "powers.monomials", "params": { "terms": 2 }, "seed": "unit3/8", "count": 4 } }
 ```
 
+The prompt is optional: each generator has default instructions ("Simplify", "Solve"…).
+A whole recipe can be this short:
+
+```json
+{ "type": "quiz", "title": "Powers practice", "seed": "period-2",
+  "blocks": [
+    { "kind": "question", "generator": { "name": "powers.negative-exponent", "count": 9 } },
+    { "kind": "question", "generator": { "name": "powers.solve-exponential", "count": 6 } }
+  ] }
+```
+
+**In the editor:** open a file whose generated blocks have no parts (a short
+"recipe") and they are filled in when it opens. Each generated question shows its
+generator, its seed, how many parts, and a **New seed** button that rerolls just that
+question (Undo brings the old one back). The document settings have a quiz seed and
+a **New version** button that gives every generated question new numbers. Saving
+writes a generated question as just its `generator` line while it still matches what
+the generator makes; a question changed by hand is saved with all its text and is
+never overwritten without asking.
+
+**Seeds:** a block's own `generator.seed` wins; without one, the block uses the
+document's `seed` plus its position (`"<seed>/<block number>"`), so one quiz seed can
+drive the whole quiz. Moving a block without its own seed changes its numbers.
+
 `node tools/generate.js recipe.json out.json` fills every such block (parts get
 `prompt`, `answer` and the worked `solution`), keeping the `generator` field so the
-block can be rebuilt. `--seed something-new` gives a fresh version with new numbers.
+block can be rebuilt. `--seed something-new` sets a new document seed (and clears block
+seeds), giving a fresh version with new numbers.
 Part *i* is built from seed `"<seed>:<i>"`; repeated prompts in a block are re-rolled.
 Forms chosen in a `set` parameter are spread across the parts in the listed order.
 
