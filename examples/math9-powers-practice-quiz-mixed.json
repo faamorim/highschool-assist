@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "type": "quiz",
-  "title": "(5+) Math 9  Powers Practice Quiz (mixed)",
+  "title": "Math 9 Powers Practice Quiz",
   "header": {
     "fields": [
       "name"
@@ -216,9 +216,9 @@
       "space": 1,
       "parts": [
         {
-          "prompt": "Distance from Earth to the Sun: $150\\,000\\,000$ km",
-          "answer": "$1.5\\times10^8$ km",
-          "solution": "The decimal point moves 8 places left, so the exponent is $8$"
+          "prompt": "Distance from Earth to the Moon: $384\\,000$ km",
+          "answer": "$3.84\\times10^5$ km",
+          "solution": "The decimal point moves 5 places left, so the exponent is $5$"
         },
         {
           "prompt": "Diameter of a red blood cell: $0.0000075$ m",
@@ -261,7 +261,7 @@
       "space": 3,
       "marks": 1,
       "answer": "$1.5\\times10^8$ km",
-      "solution": "distance = speed × time\n$= (3\\times10^5)(5\\times10^2)$\n$= 15\\times10^7$\n$= 1.5\\times10^1\\times10^7$\nIt matches the Earth–Sun distance in the scientific notation question!"
+      "solution": "distance = speed × time\n$= (3\\times10^5)(5\\times10^2)$\n$= 15\\times10^7$\n$= 1.5\\times10^1\\times10^7$"
     }
   ]
 }

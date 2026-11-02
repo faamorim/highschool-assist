@@ -11,7 +11,7 @@ function part(name, params, tag, opts) {
 }
 const Q = (prompt, o) => Object.assign({ kind: 'question', prompt }, o);
 const doc = {
-  schemaVersion: 1, type: 'quiz', title: '(5+) Math 9  Powers Practice Quiz (mixed)',
+  schemaVersion: 1, type: 'quiz', title: 'Math 9 Powers Practice Quiz',
   header: { fields: ['name'], showGrade: true, gradeLabel: 'Quiz', custom: [], repeat: true },
   footer: { pageNumbers: true }, defaultMarks: 0.5, showMarks: true,
   answers: { handout: 'none', key: 'worked' }, paper: 'letter', seed: SEED,
@@ -43,7 +43,7 @@ const doc = {
     Q('Solve', { columns: 3, space: 3, generator: { name: 'powers.solve-exponential', params: { forms: ['unknown-exponent', 'power-of-ten', 'reciprocal-base'] }, seed: SEED + '/2', count: 3 } }),
     { kind: 'heading', text: 'Scientific notation' },
     Q('Write in scientific notation', { columns: 1, space: 1, parts: [
-      { prompt: 'Distance from Earth to the Sun: $150\\,000\\,000$ km', answer: '$1.5\\times10^8$ km', solution: 'The decimal point moves 8 places left, so the exponent is $8$' },
+      { prompt: 'Distance from Earth to the Moon: $384\\,000$ km', answer: '$3.84\\times10^5$ km', solution: 'The decimal point moves 5 places left, so the exponent is $5$' },
       { prompt: 'Diameter of a red blood cell: $0.0000075$ m', answer: '$7.5\\times10^{-6}$ m', solution: 'The decimal point moves 6 places right, so the exponent is $-6$' },
       part('sci.normalize', { shifts: ['too-big'] }, 'n1')
     ] }),
@@ -54,7 +54,7 @@ const doc = {
     ] }),
     Q('Light travels about $3\\times10^5$ km every second. Sunlight takes about $5\\times10^2$ seconds to reach Earth. About how far away is the Sun? Write your answer in scientific notation.', {
       space: 3, marks: 1, answer: '$1.5\\times10^8$ km',
-      solution: 'distance = speed × time\n$= (3\\times10^5)(5\\times10^2)$\n$= 15\\times10^7$\n$= 1.5\\times10^1\\times10^7$\nIt matches the Earth–Sun distance in the scientific notation question!' })
+      solution: 'distance = speed × time\n$= (3\\times10^5)(5\\times10^2)$\n$= 15\\times10^7$\n$= 1.5\\times10^1\\times10^7$' })
   ]
 };
 const out = G.fillDocument(doc);
