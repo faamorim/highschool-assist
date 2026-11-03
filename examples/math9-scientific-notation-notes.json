@@ -94,7 +94,7 @@
       "kind": "question",
       "prompt": "Write in scientific notation",
       "columns": 2,
-      "space": 1,
+      "space": 0,
       "parts": [
         {
           "prompt": "$1000 =$",
@@ -137,15 +137,15 @@
       "space": 0,
       "parts": [
         {
-          "prompt": "Speed of light, 300 000 km/s: [[line-l]]",
+          "prompt": "Speed of light, 300 000 km/s: [[line]]",
           "answer": "$3.0\\times10^5$ km/s"
         },
         {
-          "prompt": "Mass of Earth, 5 980 000 000 000 000 000 000 000 kg: [[line]]",
+          "prompt": "Mass of Earth, 5 980 000 000 000 000 000 000 000 kg: [[line-s]]",
           "answer": "$5.98\\times10^{24}$ kg"
         },
         {
-          "prompt": "Mass of the ball in a ball-point pen, 0.004 g: [[line-l]]",
+          "prompt": "Mass of the ball in a ball-point pen, 0.004 g: [[line]]",
           "answer": "$4.0\\times10^{-3}$ g"
         }
       ]
@@ -157,8 +157,8 @@
         "rowLabels": true,
         "widths": [
           5,
-          3,
-          3
+          3.4,
+          3.3
         ],
         "header": [
           "**Physical quantity**",
@@ -245,7 +245,7 @@
       "kind": "question",
       "prompt": "Write in scientific notation",
       "columns": 2,
-      "space": 1,
+      "space": 0,
       "parts": [
         {
           "prompt": "$32\\times10^4 =$",
@@ -277,7 +277,7 @@
       "kind": "question",
       "prompt": "Find each value for $n$",
       "columns": 1,
-      "space": 1.5,
+      "space": 0.6,
       "parts": [
         {
           "prompt": "$1265 = 1.265\\times10^n$",
@@ -305,23 +305,26 @@
       "kind": "question",
       "prompt": "Write in scientific notation and estimate the answer",
       "columns": 1,
-      "space": 3,
       "parts": [
         {
           "prompt": "$\\dfrac{582965\\times7123085}{5034.8} =$",
-          "answer": "$8\\times10^8$"
+          "answer": "$8\\times10^8$",
+          "space": 0.5
         },
         {
           "prompt": "$\\dfrac{9867341\\times403928}{79386.3} =$",
-          "answer": "$5\\times10^7$"
+          "answer": "$5\\times10^7$",
+          "space": 0.5
         },
         {
           "prompt": "$\\dfrac{392876\\times48731\\times0.000186}{0.0000077\\times3865097} =$",
-          "answer": "$1\\times10^5$"
+          "answer": "$1\\times10^5$",
+          "space": 2
         },
         {
           "prompt": "$\\dfrac{0.00000028\\times78365294}{1873.6\\times29586\\times0.0038} =$",
-          "answer": "$1\\times10^{-4}$"
+          "answer": "$1\\times10^{-4}$",
+          "space": 2
         }
       ]
     },
@@ -329,15 +332,16 @@
       "kind": "question",
       "prompt": "A faucet is leaking at the rate of one drop of water per second. The volume of one drop is $0.1\\ \\text{cm}^3$.",
       "boxed": false,
-      "space": 6,
       "parts": [
         {
           "prompt": "Calculate the volume of water lost in a year",
-          "answer": "$3\\,153\\,600\\ \\text{cm}^3 = 3.1536\\ \\text{m}^3$"
+          "answer": "$3\\,153\\,600\\ \\text{cm}^3 = 3.1536\\ \\text{m}^3$",
+          "space": 3
         },
         {
           "prompt": "Calculate how long it would take to fill a rectangular basin $30\\ \\text{cm}$ by $20\\ \\text{cm}$ by $20\\ \\text{cm}$",
-          "answer": "$120\\,000$ s = 33 h 20 min"
+          "answer": "$120\\,000$ s = 33 h 20 min",
+          "space": 3
         }
       ]
     }
