@@ -78,7 +78,7 @@
 .ws-text p { margin: 0 0 0.6em; }
 .ws-text ul, .ws-text ol { margin: 0 0 0.6em; padding-left: 2.2em; }
 .ws-text li { margin: 0.15em 0; }
-.math-display { margin: 0.35em 0 0.6em; overflow-x: auto; overflow-y: hidden; }
+.math-display { margin: 0.35em 0 0.6em; overflow: visible; }
 .math-display .katex-display { margin: 0; text-align: left; }
 .q-prompt .math-display .katex-display, .ws-text .math-display .katex-display { text-align: left; }
 .math-display .katex-display > .katex { text-align: left; }
