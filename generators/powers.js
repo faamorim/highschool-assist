@@ -40,6 +40,7 @@
   // ---------------------------------------------------------------------
   G.register({
     name: 'powers.negative-exponent',
+    topic: 'Powers',
     title: 'Evaluate powers with negative exponents',
     prompt: 'Evaluate',
     columns: 3,
@@ -99,6 +100,7 @@
   // ---------------------------------------------------------------------
   G.register({
     name: 'powers.product-quotient',
+    topic: 'Powers',
     title: 'Multiply or divide powers with the same base',
     prompt: 'Simplify',
     columns: 3,
@@ -140,6 +142,7 @@
   // ---------------------------------------------------------------------
   G.register({
     name: 'powers.power-of-power',
+    topic: 'Powers',
     title: 'Power of a power, then multiply or divide',
     prompt: 'Simplify',
     columns: 2,
@@ -183,6 +186,7 @@
   // ---------------------------------------------------------------------
   G.register({
     name: 'powers.monomials',
+    topic: 'Powers',
     title: 'Multiply and divide monomials (coefficients and powers)',
     prompt: 'Simplify',
     columns: 2,
@@ -263,6 +267,7 @@
   // ---------------------------------------------------------------------
   G.register({
     name: 'powers.evaluate-mixed',
+    topic: 'Powers',
     title: 'Evaluate expressions with negative exponents',
     prompt: 'Evaluate',
     columns: 2,
@@ -323,6 +328,7 @@
   // ---------------------------------------------------------------------
   G.register({
     name: 'powers.positive-exponents',
+    topic: 'Powers',
     title: 'Write numbers as powers with positive exponents',
     prompt: 'Express as powers with positive exponents',
     columns: 4,
@@ -384,6 +390,7 @@
   // ---------------------------------------------------------------------
   G.register({
     name: 'powers.order',
+    topic: 'Powers',
     title: 'Write as powers of one base and put in order',
     prompt: 'Express as a power, and then arrange in order from least to greatest',
     whole: true,
@@ -428,6 +435,7 @@
   // ---------------------------------------------------------------------
   G.register({
     name: 'powers.solve-exponential',
+    topic: 'Powers',
     title: 'Solve equations with powers',
     prompt: 'Solve',
     columns: 2,
