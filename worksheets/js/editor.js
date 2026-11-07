@@ -21,6 +21,9 @@
     showAnswers: false,
     view: 'handout',
     openSteps: new WeakSet(),
+    genOpen: new WeakSet(),
+    picking: false,
+    lastGenerator: null,
     open: new WeakSet(),
     undo: [],
     lastField: null
@@ -438,10 +441,21 @@
 
   // ---------- generated questions ----------
 
-  function paramSummary(p) {
-    return Object.keys(p || {}).map(function (k) {
-      var v = p[k];
-      return k + ': ' + (Array.isArray(v) ? v.join(', ') : String(v));
+  // "Largest exponent: 4 · Forms: 2⁻³, 10⁻ⁿ" from the stored params, using the
+  // descriptor's labels when the generator is known.
+  function paramSummary(q) {
+    var p = q.generator.params || {};
+    var gen = WS.generated.descriptor(q);
+    var defs = {};
+    ((gen && gen.params) || []).forEach(function (d) { defs[d.key] = d; });
+    function show(d, v) {
+      if (!d || !d.values) return typeof v === 'boolean' ? (v ? 'on' : 'off') : String(v);
+      var o = d.values.filter(function (x) { return x.value === v; })[0];
+      return o ? o.label : String(v);
+    }
+    return Object.keys(p).map(function (k) {
+      var d = defs[k], v = p[k];
+      return (d ? d.label : k) + ': ' + (Array.isArray(v) ? v.map(function (x) { return show(d, x); }).join(', ') : show(d, v));
     }).join(' · ') || 'default settings';
   }
 
@@ -471,10 +485,31 @@
       var n = Math.max(1, Math.min(20, Math.round(+count.value) || 1));
       redo(function () { q.generator.count = n; G.regenerate(doc, i); });
     });
+    var settings = null;
+    var gen = G.descriptor(q);
+    if (gen && (gen.params || []).length) {
+      var controls = WS.genPanel.paramControls(gen, q.generator.params, function (k, v) {
+        var applied = false;
+        redo(function () {
+          q.generator.params = q.generator.params || {};
+          q.generator.params[k] = v;
+          G.regenerate(doc, i);
+          applied = true;
+        });
+        if (!applied) controls.reset(q.generator.params);
+      });
+      settings = h('details', { class: 'gen-settings', open: state.genOpen.has(q),
+        ontoggle: function (ev) { if (ev.target.open) state.genOpen.add(q); else state.genOpen.delete(q); } },
+        h('summary', { text: 'Settings' }),
+        controls,
+        h('button', { class: 'btn small', text: 'Reset to defaults',
+          title: 'Use the generator\'s default settings',
+          onclick: function () { redo(function () { delete q.generator.params; G.regenerate(doc, i); }); } }));
+    }
     return h('div', { class: 'gen-box' + (synced ? '' : ' edited') },
       h('div', { class: 'row' },
         h('span', { class: 'gen-title', text: '⚙ Generated: ' + G.title(q) }),
-        h('span', { class: 'muted', text: paramSummary(q.generator.params) })),
+        h('span', { class: 'muted', text: paramSummary(q) })),
       h('div', { class: 'row' },
         field('Seed', seed),
         G.available() ? field('Parts', count) : null,
@@ -484,7 +519,8 @@
             onclick: function () { redo(function () { G.reroll(doc, i); }); } }))),
       synced ? null : h('p', { class: 'muted warn',
         text: G.available() ? 'Changed by hand: saved with all its text. A new seed replaces your changes.'
-          : 'The generator library did not load, so this question cannot be regenerated here.' }));
+          : 'The generator library did not load, so this question cannot be regenerated here.' }),
+      settings);
   }
 
   function buildQuestionBody(q, body) {
@@ -789,6 +825,28 @@
   function buildAddBar() {
     var bar = $('add-bar');
     bar.innerHTML = '';
+    if (state.picking) {
+      bar.appendChild(WS.genPanel.picker({
+        last: state.lastGenerator,
+        onAdd: function (g) {
+          snapshot();
+          state.picking = false;
+          state.lastGenerator = g.name;
+          var b = { kind: 'question', generator: g };
+          state.doc.blocks.push(b);
+          state.open.add(b);
+          try { WS.generated.regenerate(state.doc, state.doc.blocks.length - 1); }
+          catch (e) { alert(e.message || e); }
+          buildAddBar();
+          changed(true);
+          var cards = document.querySelectorAll('#blocks .card');
+          var last = cards[cards.length - 1];
+          if (last) last.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        },
+        onCancel: function () { state.picking = false; buildAddBar(); }
+      }));
+      return;
+    }
     ['question', 'example', 'text', 'heading', 'table', 'image', 'pageBreak'].forEach(function (k) {
       bar.appendChild(h('button', { class: 'btn', text: '+ ' + KIND_NAMES[k], onclick: function () {
         snapshot();
@@ -805,6 +863,15 @@
         }
       } }));
     });
+    if (WS.generated && WS.generated.available() && WS.genPanel) {
+      bar.appendChild(h('button', { class: 'btn', text: '+ Generated question',
+        title: 'Pick a kind of question and let the generator write the parts',
+        onclick: function () {
+          state.picking = true;
+          buildAddBar();
+          $('add-bar').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } }));
+    }
   }
 
   function buildAll() {
