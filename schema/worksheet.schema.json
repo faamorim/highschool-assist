@@ -73,6 +73,34 @@
             "seed": { "type": ["number", "string"], "description": "Optional; without it the block uses \"<document seed>/<block number>\"." },
             "count": { "type": "integer", "minimum": 1, "description": "How many parts (default 4)." }
           }
+        },
+        "template": {
+          "type": "object",
+          "description": "An unlinked generated question: rendered from these values instead of a seed, so editing a value updates the answer and steps. Shared with the generator library: see docs/generator-api.md, section 6.",
+          "required": ["name", "items"],
+          "properties": {
+            "name": { "type": "string", "description": "Generator (template) name, e.g. powers.monomials." },
+            "items": {
+              "type": "array",
+              "description": "One item per part (one for a whole-question template).",
+              "items": {
+                "type": "object",
+                "required": ["vars"],
+                "properties": {
+                  "vars": { "type": "object", "description": "The template's variables (see its `variables`)." },
+                  "overrides": {
+                    "type": "object",
+                    "description": "Text typed over by hand; wins over the rendered text. May use %name% placeholders.",
+                    "properties": {
+                      "prompt": { "type": "string" },
+                      "answer": { "type": "string" },
+                      "steps": { "type": "array", "items": { "type": "string" } }
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       },
       "allOf": [
