@@ -1,8 +1,12 @@
 # Problem generators
 
-Generators live in `generators/` as classic scripts (no build, work from `file://`):
-`core.js` first, then any generator files (`powers.js`, `sci-notation.js`).
-They register on `window.Mathwise.generators`.
+Generators live in `generators/` as classic scripts (no build, work from `file://`).
+Pages load just `generators/index.js`, which lists and loads `core.js` and every
+generator file; they register on `window.Mathwise.generators`. To add a generator file,
+add it to the list in `generators/index.js` (no page needs editing).
+
+What pages may rely on, folder ownership and how the contract changes are in
+[`generator-api.md`](generator-api.md) (Generator API v1).
 
 ## Using one
 
@@ -80,6 +84,9 @@ Parameters show real values and accepted values (`params` on each generator;
 aspect bands (see the generator design doc) are the next layer on top.
 
 ## Checks
+
+`node tests/check-contract.js` checks every generator against the Generator API v1
+(descriptor fields, parameter types, output shape, seed rule).
 
 `node tests/check-generators.js` runs every generator for many seeds: deterministic,
 valid KaTeX, and every worked step and answer checked numerically against the

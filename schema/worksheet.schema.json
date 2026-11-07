@@ -65,11 +65,13 @@
         "id": { "type": "string", "description": "Optional stable id (useful for generators)." },
         "generator": {
           "type": "object",
-          "description": "Reserved for problem generators: which generator produced this block and with what settings, so it can be regenerated.",
+          "description": "Which generator makes this question and with what settings, so it can be regenerated. Shared with the generator library: see docs/generator-api.md.",
+          "required": ["name"],
           "properties": {
-            "name": { "type": "string" },
-            "params": { "type": "object" },
-            "seed": { "type": ["number", "string"] }
+            "name": { "type": "string", "description": "Generator name, e.g. powers.monomials." },
+            "params": { "type": "object", "description": "Real parameter values only; missing ones use the generator's defaults." },
+            "seed": { "type": ["number", "string"], "description": "Optional; without it the block uses \"<document seed>/<block number>\"." },
+            "count": { "type": "integer", "minimum": 1, "description": "How many parts (default 4)." }
           }
         }
       },

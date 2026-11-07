@@ -33,7 +33,8 @@ recreated from real Math 9 handouts, are in [`examples/`](examples/) and in the 
   <http://localhost:8000/>. Opening `worksheets/index.html` straight from disk also works,
   except for the *Examples…* menu.
 
-Checks for the example files: `node tests/check-examples.js`.
+Checks: `node tests/check-examples.js` (example files), `node tests/check-generators.js`
+(generators), `node tests/check-contract.js` (the [generator API](docs/generator-api.md)).
 
 ## Coming later
 

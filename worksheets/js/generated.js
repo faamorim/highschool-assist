@@ -4,7 +4,7 @@
  *
  * A generated question block:
  *   { kind: 'question', generator: { name, params, seed?, count } }
- * Without its own seed, a block uses the document seed: "<doc.seed>/<block number>".
+ * Without its own seed, a block uses the document seed (Mathwise.generators.blockSeed).
  *
  * Saving: a block whose parts still match what its generator makes is saved
  * without parts (and without its prompt if that is the generator's default).
@@ -13,19 +13,24 @@
 (function (WS) {
   'use strict';
 
+  // The editor uses only the generator API described in docs/generator-api.md
+  // (list/get descriptors, validate, fillBlock, blockSeed). It never knows what
+  // any particular generator does.
+  var API_VERSION = 1;
   function lib() { return window.Mathwise && window.Mathwise.generators; }
-  function available() { return !!lib(); }
+  function available() { return !!lib() && lib().apiVersion === API_VERSION; }
 
   function isGenerated(b) { return !!(b && b.kind === 'question' && b.generator && b.generator.name); }
 
   function genOf(b) {
+    if (!available()) return null;
     try { return lib().get(b.generator.name); } catch (e) { return null; }
   }
 
+  // The seed block i actually uses (the rule itself lives in the generator library).
   function seedOf(doc, i) {
-    var g = doc.blocks[i].generator;
-    if (g.seed != null && g.seed !== '') return String(g.seed);
-    return String(doc.seed != null && doc.seed !== '' ? doc.seed : 'mathwise') + '/' + (i + 1);
+    if (!available()) return doc.blocks[i].generator.seed || '';
+    return lib().blockSeed(doc.blocks[i].generator, doc.seed, i + 1);
   }
 
   // What the generator makes for block i (a fresh block; the document is not changed).
@@ -35,10 +40,7 @@
     delete copy.parts; delete copy.answer; delete copy.solution;
     var gen = genOf(b);
     if (gen && !gen.whole && b.prompt != null && b.prompt !== '') copy.prompt = b.prompt; else delete copy.prompt;
-    copy.generator.seed = seedOf(doc, i);
-    var out = lib().fillBlock(copy);
-    out.generator = b.generator;   // keep the block's own (maybe missing) seed
-    return out;
+    return lib().fillBlock(copy, { docSeed: doc.seed, blockNumber: i + 1 });
   }
 
   function items(b) {

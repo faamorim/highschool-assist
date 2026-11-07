@@ -31,6 +31,7 @@
 
   G.register({
     name: 'sci.to-scientific',
+    topic: 'Scientific notation',
     title: 'Write numbers in scientific notation',
     prompt: 'Write in scientific notation',
     columns: 2,
@@ -51,6 +52,7 @@
 
   G.register({
     name: 'sci.normalize',
+    topic: 'Scientific notation',
     title: 'Fix numbers that are not quite in scientific notation',
     prompt: 'Write in scientific notation',
     columns: 2,
@@ -79,6 +81,7 @@
 
   G.register({
     name: 'sci.find-exponent',
+    topic: 'Scientific notation',
     title: 'Find the power of ten',
     prompt: 'Find each value for $n$',
     columns: 1,

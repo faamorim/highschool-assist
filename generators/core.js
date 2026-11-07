@@ -5,6 +5,7 @@
  *
  *   {
  *     name: 'powers.product-quotient',     // stable id, stored in documents
+ *     topic: 'Powers',                      // groups generators in pickers
  *     title: 'Product and quotient of powers',
  *     prompt: 'Simplify',                   // default question prompt for a block
  *     columns: 3, workSpace: 1.5,           // suggested layout for a block of parts
@@ -27,6 +28,7 @@
  * Math is LaTeX inside $…$ (the worksheet markup); steps are one line each,
  * every rule application its own line (7^{-8}÷7^2 = 7^{-8-2} = 7^{-10}).
  *
+ * The full contract (what pages may rely on) is docs/generator-api.md.
  * Classic script: works from file://, in the editor page, and in node via vm.
  */
 (function (root) {
@@ -178,17 +180,32 @@
   }
 
   /**
+   * THE seed rule (the only copy of it): a block's own generator.seed wins;
+   * without one, the block uses the document seed plus its 1-based position,
+   * "<doc seed>/<block number>" ("mathwise" when the document has no seed).
+   * Changing this changes the numbers of every saved quiz: it is part of the API.
+   */
+  function blockSeed(generator, docSeed, blockNumber) {
+    if (generator && generator.seed != null && generator.seed !== '') return String(generator.seed);
+    return String(docSeed != null && docSeed !== '' ? docSeed : 'mathwise') + '/' + blockNumber;
+  }
+
+  /**
    * Fill a worksheet question block from its `generator` field:
-   *   { kind: 'question', generator: { name, params, seed, count } }
+   *   { kind: 'question', generator: { name, params, seed?, count } }
+   * opts.docSeed / opts.blockNumber: used when the block has no seed of its own.
+   * opts.output: 'answer' leaves out the worked solutions.
    * Parts get prompt, answer and solution (steps joined one per line).
    * Repeated prompts inside a block are re-rolled deterministically.
-   * Returns a new block; the input is not changed.
+   * Returns a new block (its `generator` field exactly as given); the input is not changed.
    */
   function fillBlock(block, opts) {
-    var g = block.generator;
+    opts = opts || {};
+    var g = JSON.parse(JSON.stringify(block.generator));
+    g.seed = blockSeed(block.generator, opts.docSeed, opts.blockNumber);
     var gen = get(g.name);
     var out = JSON.parse(JSON.stringify(block));
-    var steps = !opts || opts.output !== 'answer';
+    var steps = opts.output !== 'answer';
     function toItem(r) {
       var it = { prompt: r.prompt, answer: r.answer };
       if (steps && r.steps && r.steps.length) it.solution = r.steps.join('\n');
@@ -221,20 +238,14 @@
   }
 
   // Fill every generator block of a document (other blocks are kept as they are).
-  // A block without its own seed uses the document seed: "<doc.seed>/<block number>".
+  // A block without its own seed uses the document seed (see blockSeed).
   function fillDocument(doc, opts) {
     var out = JSON.parse(JSON.stringify(doc));
     out.blocks = out.blocks.map(function (b, i) {
       if (!b.generator) return b;
-      var g = b.generator;
-      if (g.seed == null || g.seed === '') {
-        var c = JSON.parse(JSON.stringify(b));
-        c.generator.seed = (doc.seed != null && doc.seed !== '' ? doc.seed : 'mathwise') + '/' + (i + 1);
-        var f = fillBlock(c, opts);
-        f.generator = g;
-        return f;
-      }
-      return fillBlock(b, opts);
+      var o = { docSeed: doc.seed, blockNumber: i + 1 };
+      if (opts && opts.output) o.output = opts.output;
+      return fillBlock(b, o);
     });
     return out;
   }
@@ -294,7 +305,10 @@
     return num(c) + vp;
   }
 
+  // Public API: everything here (and the descriptor fields) is described in
+  // docs/generator-api.md. Pages and tools use nothing else.
   MW.generators = {
+    apiVersion: 1,
     register: register,
     get: get,
     list: list,
@@ -303,6 +317,7 @@
     generate: generate,
     fillBlock: fillBlock,
     fillDocument: fillDocument,
+    blockSeed: blockSeed,
     makeRng: makeRng,
     partSeed: partSeed
   };
