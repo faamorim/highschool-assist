@@ -279,12 +279,14 @@
    * Render a template from its vars (no seed). opts.output as in generate;
    * opts.overrides: { prompt?, answer?, steps?: [..] } typed by hand, used
    * instead of the rendered text (with %name% placeholders filled).
-   * Throws with friendly messages when the vars do not fit (see checkVars).
+   * Throws with friendly messages when the vars do not fit (see checkVars);
+   * with opts.noThrow it returns { errors: [messages] } instead.
    */
   function render(name, vars, opts) {
     var gen = get(name);
     opts = opts || {};
     var errs = checkVars(gen, vars);
+    if (errs.length && opts.noThrow) return { errors: errs };
     if (errs.length) throw new Error(gen.title + ': ' + errs.join(' '));
     var r = gen.render(JSON.parse(JSON.stringify(vars)));
     var ov = opts.overrides || {};
@@ -360,9 +362,17 @@
         attempt++;
       } while (seen[r.prompt] && attempt < 50);
       seen[r.prompt] = true;
-      out.parts.push(toItem(r));
+      out.parts.push(keepExtras(toItem(r), block.parts && block.parts[i]));
     }
     return out;
+  }
+
+  // Part fields the library does not own (marks, space, label, …) survive a re-render.
+  var OWNED = { prompt: 1, answer: 1, solution: 1, template: 1 };
+  function keepExtras(item, old) {
+    if (!old) return item;
+    Object.keys(old).forEach(function (k) { if (!OWNED[k] && item[k] === undefined) item[k] = old[k]; });
+    return item;
   }
 
   // Pick, re-rolling a part whose prompt repeats an earlier part (same rule as fillBlock).
@@ -385,10 +395,12 @@
 
   /**
    * Unlink a generator block: the same questions, now from vars instead of a seed.
-   *   { kind: 'question', template: { name, items: [{ vars, overrides? }] } }
-   * (one item for a whole-question generator). The block keeps its filled
-   * parts / prompt / answer / solution, so a page that does not know templates
-   * still shows it as a hand-made question. opts as in fillBlock.
+   *   { kind: 'question', template: { name, params },
+   *     parts: [ { prompt, answer, solution, template: { vars, overrides? } }, ... ] }
+   * A whole-question template keeps vars (and overrides) on block.template itself.
+   * params are the settings at unlink time, so a page can pick() one more part
+   * like these. The filled text stays on the block, so a page that does not know
+   * templates still shows it as a hand-made question. opts as in fillBlock.
    */
   function unlink(block, opts) {
     opts = opts || {};
@@ -396,12 +408,16 @@
     if (!isTemplate(gen)) throw new Error(gen.title + ' is not a template.');
     var seed = blockSeed(block.generator, opts.docSeed, opts.blockNumber);
     var filled = fillBlock(block, opts);
+    var vars = blockVars(block.generator, seed);
     delete filled.generator;
-    filled.template = { name: gen.name, items: blockVars(block.generator, seed).map(function (v) { return { vars: v }; }) };
+    filled.template = { name: gen.name, params: withDefaults(gen, block.generator.params) };
+    if (gen.whole) filled.template.vars = vars[0];
+    else filled.parts.forEach(function (p, i) { p.template = { vars: vars[i] }; });
     return filled;
   }
 
-  // Fill a template block: render every item from its vars and overrides.
+  // Fill a template block: re-render every part that has template vars (a part
+  // without them is hand-made and kept as it is); other part fields are kept.
   function fillTemplateBlock(block, opts) {
     var t = block.template;
     var gen = get(t.name);
@@ -410,20 +426,18 @@
     if (out.prompt == null) out.prompt = gen.prompt || 'Answer';
     if (out.columns == null && gen.columns) out.columns = gen.columns;
     if (out.space == null) out.space = gen.workSpace || 1;
-    function item(it) {
-      var r = render(t.name, it.vars, { overrides: it.overrides });
-      var o = { prompt: r.prompt, answer: r.answer };
-      if (steps && r.steps.length) o.solution = r.steps.join('\n');
-      return o;
+    function apply(target, tv) {
+      var r = render(t.name, tv.vars, { overrides: tv.overrides });
+      target.prompt = r.prompt;
+      target.answer = r.answer;
+      if (steps && r.steps.length) target.solution = r.steps.join('\n'); else delete target.solution;
     }
     if (gen.whole) {
-      var w = item(t.items[0]);
-      out.prompt = w.prompt; out.answer = w.answer;
-      if (w.solution) out.solution = w.solution; else delete out.solution;
+      apply(out, t);
       delete out.parts;
       return out;
     }
-    out.parts = t.items.map(item);
+    (out.parts || []).forEach(function (p) { if (p.template) apply(p, p.template); });
     return out;
   }
 

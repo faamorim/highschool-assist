@@ -104,19 +104,29 @@ gens.forEach((gen) => {
     const g = G.generate(n, {}, seed, { index: i % 3, count: 3 });
     check(JSON.stringify(r) === JSON.stringify(g), where('render(pick()) differs from generate()'));
   }
-  // Unlinked block shows the same questions; overrides with placeholders win.
+  // Unlinked block shows the same questions, keeps part extras; overrides with placeholders win.
   const stored2 = { kind: 'question', generator: { name: n, params: {}, count: 3, seed: 'u' } };
-  const un = G.unlink(stored2);
-  check(!un.generator && un.template && un.template.name === n && Array.isArray(un.template.items), where('unlink must give template { name, items }'));
-  const refilled = G.fillBlock(un);
   const filled = G.fillBlock(stored2);
-  check(JSON.stringify(refilled.parts || refilled.answer) === JSON.stringify(filled.parts || filled.answer), where('unlinked block differs from the generated one'));
-  const it = un.template.items[0];
-  const key = Object.keys(it.vars).find((k) => typeof it.vars[k] !== 'object');
-  it.overrides = { answer: 'is %' + key + '% (100%%)' };
+  if (filled.parts) filled.parts[1].marks = 2;
+  const un = G.unlink(Object.assign({}, stored2, { parts: filled.parts }));
+  check(!un.generator && un.template && un.template.name === n && typeof un.template.params === 'object', where('unlink must give template { name, params }'));
+  if (gen.whole) check(un.template.vars && !un.parts, where('whole unlink keeps vars on block.template'));
+  else check(un.parts.every((p) => p.template && p.template.vars) && un.parts[1].marks === 2, where('unlink must put template { vars } on each part and keep marks'));
+  const refilled = G.fillBlock(un);
+  const strip = (b) => JSON.stringify((b.parts || [b]).map((p) => [p.prompt, p.answer, p.solution]));
+  check(strip(refilled) === strip(filled), where('unlinked block differs from the generated one'));
+  const tv = gen.whole ? un.template : un.parts[0].template;
+  const key = Object.keys(tv.vars).find((k) => typeof tv.vars[k] !== 'object');
+  tv.overrides = { answer: 'is %' + key + '% (100%%)' };
   const ov = G.fillBlock(un);
-  check((ov.parts ? ov.parts[0] : ov).answer === 'is ' + it.vars[key] + ' (100%)', where('override placeholders not filled'));
-  check(G.placeholders(n, it.vars).includes(key), where('placeholders() misses ' + key));
+  check((ov.parts ? ov.parts[0] : ov).answer === 'is ' + tv.vars[key] + ' (100%)', where('override placeholders not filled'));
+  check(G.placeholders(n, tv.vars).includes(key), where('placeholders() misses ' + key));
+  if (!gen.whole) {
+    const extra = G.pick(n, un.template.params, 'more');
+    check(G.checkVars(gen, extra).length === 0, where('pick with template.params fails'));
+  }
+  const bad = G.render(n, {}, { noThrow: true });
+  check(Array.isArray(bad.errors) && bad.errors.length > 0, where('render noThrow must return errors'));
 });
 
 if (fail.length) {

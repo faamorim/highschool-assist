@@ -138,9 +138,9 @@ shows the value as JSON text. A new kind is an optional addition (still v1).
 | `isTemplate(gen)` | `true` when the generator has `variables`, `pick`, `render`. |
 | `pick(name, values, seed, { index, count })` | The vars a seed chooses (same as `generate` uses). |
 | `checkVars(gen or name, vars)` | Friendly messages ("Each division must come out whole: 6 ÷ 4 does not."); empty when fine. |
-| `render(name, vars, { output, overrides })` | One item, exactly like `generate`. Throws with the `checkVars` messages when the vars do not fit. |
+| `render(name, vars, { output, overrides, noThrow })` | One item, exactly like `generate`. Throws with the `checkVars` messages when the vars do not fit (or, with `noThrow`, returns `{ errors }`). |
 | `placeholders(name, vars)` | Names a teacher may type as `%name%` (below). |
-| `unlink(block, { docSeed, blockNumber })` | A generator block turned into a template block with the same questions. |
+| `unlink(block, { docSeed, blockNumber })` | A generator block turned into a template block with the same questions (keeps part fields like `marks`). |
 
 **Overrides and placeholders.** Text the teacher types over the rendered `prompt`,
 `answer` or `steps` (the whole list) is kept as an override and wins over the rendered
@@ -150,19 +150,27 @@ letters, digits, choices) or by a *slot*: a named value the template works out, 
 `Add the exponents: %m% + %n% = %result%` stays right when `m` changes. `%%` is a literal
 `%`; an unknown name is left as it is.
 
-**Stored form of an unlinked question** (shared part of the worksheet schema):
+**Stored form of an unlinked question** (shared part of the worksheet schema). Each part
+carries its own vars, so moving, deleting or copying a part takes them along:
 
 ```json
-{ "kind": "question", "prompt": "Simplify", "parts": [ … as rendered … ],
-  "template": { "name": "powers.product-quotient",
-                "items": [ { "vars": { "base": 7, "m": -8, "op": "divide", "n": 2 },
-                             "overrides": { "steps": ["$= 7^{%m%-%n%}$", "$= 7^{%result%}$"] } } ] } }
+{ "kind": "question", "prompt": "Simplify",
+  "template": { "name": "powers.product-quotient", "params": { "bases": ["number"] } },
+  "parts": [
+    { "prompt": "$7^{-8}\\div 7^2 =$", "answer": "$7^{-10}$", "solution": "…", "marks": 1,
+      "template": { "vars": { "base": 7, "m": -8, "op": "divide", "n": 2 },
+                    "overrides": { "steps": ["$= 7^{%m%-%n%}$", "$= 7^{%result%}$"] } } } ] }
 ```
 
-One item per part (one item for a `whole` generator). The block has no `generator` and
-no seed; `fillBlock` renders a template block from its items. It also keeps its filled
-`parts` (or `prompt` / `answer` / `solution`), so a page that does not know templates
-still shows it as a hand-made question.
+- `block.template.params`: the generator settings when it was unlinked, so a page can
+  `pick(name, params, newSeed)` one more part like these.
+- A part without `template` is a hand-made part in the same block and is left alone.
+- A `whole` template has `vars` (and `overrides`) on `block.template` itself, no parts.
+- The block has no `generator` and no seed. `fillBlock` re-renders every part that has
+  `template` and keeps the fields it does not own (`marks`, `space`, `label`, …); it does
+  the same for a generator block's parts. The filled text stays on the block, so a page
+  that does not know templates still shows it as a hand-made question.
+- `render(name, vars, { noThrow: true })` returns `{ errors: [...] }` instead of throwing.
 
 ## Planned (not built yet, agreed 2026-11-07)
 
